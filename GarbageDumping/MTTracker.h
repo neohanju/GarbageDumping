@@ -204,7 +204,7 @@ public:
 	std::deque<CTrajectory*> queueActiveTrajectories_;	
 
 	/* matching related */
-	std::vector<float> arrTrackletToDetectionMatchingCost_;
+	std::vector<float> arrKeyPointToTrackletMatchingCost_;
 	std::vector<float> arrInterTrackletMatchingCost_;
 
 	/* feature tracking related */

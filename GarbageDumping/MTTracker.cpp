@@ -139,7 +139,8 @@ void CMTTracker::Finalize(void)
 	if (!matTrackingResult_.empty()) { matTrackingResult_.release(); }
 
 	/* matching related */
-	arrTrackletToDetectionMatchingCost_.clear();
+	arrKeyPointToTrackletMatchingCost_.clear();
+	arrInterTrackletMatchingCost_.clear();
 
 	/* result related */
 	trackingResult_.objectInfos.clear();
@@ -186,7 +187,8 @@ CTrackResult CMTTracker::Track(
 	matGrayImage_ = _curFrame;
 	cImageBuffer_.insert_resize(matGrayImage_, sizeBufferImage_);
 	if (!matTrackingResult_.empty()) { matTrackingResult_.release(); }
-	cv::cvtColor(_curFrame, matTrackingResult_, cv::COLOR_GRAY2BGR);
+	matTrackingResult_ = _curFrame.clone();
+	//cv::cvtColor(_curFrame, matTrackingResult_, cv::COLOR_GRAY2BGR);
 
 	// backward feature tracking with newly inserted keypoints
 	std::deque<CTracklet> keypointTracklets 
@@ -195,20 +197,24 @@ CTrackResult CMTTracker::Track(
 			cImageBuffer_, 
 			nCurrentFrameIdx_);
 	TrackletPtQueue backwardTracklets;
+	std::list<CTracklet> backwardTrackletsOrigins;
 	for (int i = 0; i < keypointTracklets.size(); i++)
 	{
-		listCTracklet_.push_back(keypointTracklets[i]);
-		backwardTracklets.push_back(&listCTracklet_.back());
+		backwardTrackletsOrigins.push_back(keypointTracklets[i]);
+		backwardTracklets.push_back(&backwardTrackletsOrigins.back());
 	}
 
 	// forward feature tracking with activated tracklets
-	queueActiveTracklets_
-		= ForwardTracking(
-			queueActiveTracklets_,
-			*(cImageBuffer_.rbegin() + 1),
-			*cImageBuffer_.rbegin(),
-			nCurrentFrameIdx_,
-			stParam_.nMinNumFeatures);
+	if (cImageBuffer_.num_elements() > 1)
+	{
+		queueActiveTracklets_
+			= ForwardTracking(
+				queueActiveTracklets_,
+				*(cImageBuffer_.rbegin() + 1),
+				*cImageBuffer_.rbegin(),
+				nCurrentFrameIdx_,
+				stParam_.nMinNumFeatures);
+	}
 
 	// keypoints to tracklet matching
 	queueActiveTracklets_ = UpdateTracklets(backwardTracklets, queueActiveTracklets_);
@@ -288,6 +294,7 @@ std::deque<CTracklet> CMTTracker::BackwardTracking(
 		cv::Rect2d estimatedRect;
 		CTracklet newTracklet;
 		newTracklet.id = 0;
+		newTracklet.direction = BACKWARD;
 		newTracklet.insertKeyPoints(_vecKeyPoints[i], _timeIndex);
 
 		// feature extraction		
@@ -297,6 +304,7 @@ std::deque<CTracklet> CMTTracker::BackwardTracking(
 		newTracklet.featurePointsHistory.push_back(featurePoints);
 
 		// feature tracking
+		int timeIndex = _timeIndex - 1;
 		for (hj::CMatFIFOBuffer::reverse_iterator bufferIter = _imageSet.rbegin();
 			bufferIter != _imageSet.rend() - 1;
 			bufferIter++)
@@ -314,6 +322,8 @@ std::deque<CTracklet> CMTTracker::BackwardTracking(
 
 			CKeyPoints dummyKeyPoints; 
 			dummyKeyPoints.bbox = estimatedRect;
+			newTracklet.queueKeyPoints.push_back(dummyKeyPoints);
+			newTracklet.timeEnd = timeIndex--;
 
 			/* save inliers */
 			cvPoint2fSet inlierFeaturePoints;
@@ -432,7 +442,7 @@ TrackletPtQueue CMTTracker::UpdateTracklets(
 	/////////////////////////////////////////////////////////////////////////////
 	// CALCULATE MATCHING COSTS
 	/////////////////////////////////////////////////////////////////////////////
-	std::vector<float> matchingCost(
+	std::vector<float> arrKeyPointToTrackletMatchingCost_(
 		_keyPointsTracklets.size() * _activeTracklets.size(),
 		std::numeric_limits<float>::infinity());
 	
@@ -499,7 +509,7 @@ TrackletPtQueue CMTTracker::UpdateTracklets(
 			if (std::numeric_limits<double>::infinity() == boxCost) { continue; }
 			boxCost /= (double)lengthForCompare;
 
-			arrTrackletToDetectionMatchingCost_[costPos] = (float)boxCost;
+			arrKeyPointToTrackletMatchingCost_[costPos] = (float)boxCost;
 		}
 	}
 
@@ -559,7 +569,7 @@ TrackletPtQueue CMTTracker::UpdateTracklets(
 		// case 3: more than one trackers are related and there is no dominant tracker
 		for (size_t infCostPos = costPos; infCostPos < costPos + _activeTracklets.size(); infCostPos++)
 		{
-			arrTrackletToDetectionMatchingCost_[infCostPos] = std::numeric_limits<float>::infinity();
+			arrKeyPointToTrackletMatchingCost_[infCostPos] = std::numeric_limits<float>::infinity();
 		}
 	}
 
@@ -569,16 +579,16 @@ TrackletPtQueue CMTTracker::UpdateTracklets(
 	// To ensure a proper operation of our Hungarian implementation, we convert infinite to the finite value
 	// that is little bit (=100.0f) greater than the maximum finite cost in the original cost function.
 	float maxCost = -1000.0f;
-	for (int costIdx = 0; costIdx < arrTrackletToDetectionMatchingCost_.size(); costIdx++)
+	for (int costIdx = 0; costIdx < arrKeyPointToTrackletMatchingCost_.size(); costIdx++)
 	{
-		if (!_finitef(arrTrackletToDetectionMatchingCost_[costIdx])) { continue; }
-		if (maxCost < arrTrackletToDetectionMatchingCost_[costIdx]) { maxCost = arrTrackletToDetectionMatchingCost_[costIdx]; }
+		if (!_finitef(arrKeyPointToTrackletMatchingCost_[costIdx])) { continue; }
+		if (maxCost < arrKeyPointToTrackletMatchingCost_[costIdx]) { maxCost = arrKeyPointToTrackletMatchingCost_[costIdx]; }
 	}
 	maxCost = maxCost + 100.0f;
-	for (int costIdx = 0; costIdx < arrTrackletToDetectionMatchingCost_.size(); costIdx++)
+	for (int costIdx = 0; costIdx < arrKeyPointToTrackletMatchingCost_.size(); costIdx++)
 	{
-		if (_finitef(arrTrackletToDetectionMatchingCost_[costIdx])) { continue; }
-		arrTrackletToDetectionMatchingCost_[costIdx] = maxCost;
+		if (_finitef(arrKeyPointToTrackletMatchingCost_[costIdx])) { continue; }
+		arrKeyPointToTrackletMatchingCost_[costIdx] = maxCost;
 	}
 
 
@@ -588,7 +598,7 @@ TrackletPtQueue CMTTracker::UpdateTracklets(
 	trackingResult_.objectInfos.clear();
 	CHungarianMethod cHungarianMatcher;
 	cHungarianMatcher.Initialize(
-		arrTrackletToDetectionMatchingCost_, 
+		arrKeyPointToTrackletMatchingCost_,
 		(unsigned int)_keyPointsTracklets.size(), 
 		(unsigned int)this->queueActiveTracklets_.size());
 	stMatchInfo *curMatchInfo = cHungarianMatcher.Match();
@@ -614,7 +624,7 @@ TrackletPtQueue CMTTracker::UpdateTracklets(
 		vecKeypointMatchedWithTracklet[matchIdx] = true;
 
 		// update features with detection (after result packaging)
-		curTracklet->featurePointsHistory.push_back(curKeypoint->featurePointsHistory.front());
+		curTracklet->featurePointsHistory.back() = curKeypoint->featurePointsHistory.front();
 	}
 	cHungarianMatcher.Finalize();
 
@@ -832,7 +842,7 @@ void CMTTracker::ResultPackaging()
 	{
 		for (int trackIdx = 0; trackIdx < trackingResult_.vecTrackerRects.size(); trackIdx++)
 		{
-			this->trackingResult_.matMatchingCost.at<float>(detectionIdx, trackIdx) = arrTrackletToDetectionMatchingCost_[cost_pos];
+			this->trackingResult_.matMatchingCost.at<float>(detectionIdx, trackIdx) = arrKeyPointToTrackletMatchingCost_[cost_pos];
 			cost_pos++;
 		}
 	}

@@ -52,6 +52,9 @@ public:
 		double xmin = DBL_MAX, xmax = 0.0, ymin = DBL_MAX, ymax = 0.0;
 		for (int i = 0; i < this->points.size(); i++)
 		{
+			if (0.0 == this->points[i].x && 0.0 == this->points[i].y)
+				continue;  // skip undetected keypoint
+
 			xmin = std::min(xmin, this->points[i].x);
 			xmax = std::max(xmax, this->points[i].x);
 			ymin = std::min(ymin, this->points[i].y);

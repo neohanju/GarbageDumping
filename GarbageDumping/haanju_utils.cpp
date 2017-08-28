@@ -146,7 +146,7 @@ hj::KeyPointsSet hj::ReadKeypoints(const std::string _strFilePath)
 	KeyPointsSet vec_keypoints;
 	int num_people = 0;
 	double x = 0.0, y = 0.0, confidence = 0.0;
-	double minX = 0.0, maxX = 0.0, minY = 0.0, maxY = 0.0;
+	double minX = DBL_MAX, maxX = 0.0, minY = DBL_MAX, maxY = 0.0;
 
 	FILE *fp = NULL;
 	try {
@@ -166,6 +166,9 @@ hj::KeyPointsSet hj::ReadKeypoints(const std::string _strFilePath)
 				vec_keypoints[row].points[pIdx].x = x;
 				vec_keypoints[row].points[pIdx].y = y;
 				vec_keypoints[row].points[pIdx].confidence = confidence;
+
+				// skip invalid points
+				if (0.0 == x && 0.0 == y) { continue; }
 
 				if (minX > x) { minX = x; } if (maxX < x) { maxX = x; }
 				if (minY > y) { minY = y; }	if (maxY < y) { maxY = y; }

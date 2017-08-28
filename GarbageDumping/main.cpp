@@ -135,7 +135,7 @@ int main(int argc, char** argv)
 		curKeyPoints = hj::ReadKeypoints(strFilePath);
 
 		// Track targets between consecutive frames
-		//trackResult = cTracker.Track(curKeyPoints, matCurFrame, fIdx);
+		trackResult = cTracker.Track(curKeyPoints, matCurFrame, fIdx);
 	}
 
 	return 0;
