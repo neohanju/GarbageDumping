@@ -79,26 +79,26 @@ public:
 typedef std::vector<CKeyPoints> KeyPointsSet;
 
 
-///////////////////////////////////////////////////////////////////////////
-//// FOR PER FRAME TRACKING RESULT
-///////////////////////////////////////////////////////////////////////////
-//class CObjectInfo
-//{
-//	//----------------------------------------------------------------
-//	// METHODS
-//	//----------------------------------------------------------------
-//public:
-//	// constructors
-//	CObjectInfo() : id(0), box(0.0, 0.0, 0.0, 0.0) {}
-//	~CObjectInfo() {}
-//
-//	//----------------------------------------------------------------
-//	// VARIABLES
-//	//----------------------------------------------------------------
-//public:
-//	unsigned int id;
-//	cv::Rect2d   box;
-//};
+/////////////////////////////////////////////////////////////////////////
+// FOR PER FRAME TRACKING RESULT
+/////////////////////////////////////////////////////////////////////////
+class CObjectInfo
+{
+	//----------------------------------------------------------------
+	// METHODS
+	//----------------------------------------------------------------
+public:
+	// constructors
+	CObjectInfo() : id(0), box(0.0, 0.0, 0.0, 0.0) {}
+	~CObjectInfo() {}
+
+	//----------------------------------------------------------------
+	// VARIABLES
+	//----------------------------------------------------------------
+public:
+	unsigned int id;
+	cv::Rect2d   box;
+};
 //
 //
 ///////////////////////////////////////////////////////////////////////////
@@ -127,7 +127,7 @@ typedef std::vector<CKeyPoints> KeyPointsSet;
 //	std::vector<cv::Rect2d> boxes; // current -> past order
 //};
 
-
+class CTrajectory;
 /////////////////////////////////////////////////////////////////////////
 // TRACKLET
 /////////////////////////////////////////////////////////////////////////
@@ -155,7 +155,8 @@ public:
 	TRACKING_DIRECTION direction;
 	double confidence;
 	std::deque<CKeyPoints> queueKeyPoints;
-	std::deque<cvPoint2fSet> featurePointsHistory
+	std::deque<cvPoint2fSet> featurePointsHistory;
+	CTrajectory *ptTrajectory;
 };
 typedef std::deque<CTracklet*> TrackletPtQueue;
 
@@ -179,8 +180,10 @@ public:
 	int id;
 	int timeStart;
 	int timeEnd;
+	int timeLastUpdate;
 	int duration;
 	double confidence;
+	std::deque<cv::Rect2d> boxes;
 	TrackletPtQueue tracklets;
 };
 typedef std::deque<CTrajectory> TrajectoryVector;

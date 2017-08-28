@@ -78,7 +78,6 @@
 #include <iostream>
 #include "opencv2/opencv.hpp"
 #include "opencv2/highgui/highgui.hpp"
-#include "haanju_utils.hpp"
 #include "MTTracker.h"
 
 #define KEYPOINTS_BASE_PATH ("D:\\Workspace\\Dataset\\ETRI\\GarbageDumping\\CPM_results")
@@ -98,7 +97,8 @@ int main(int argc, char** argv)
 	int nLastFrameIndex = END_FRAME_INDEX < 0 ? 
 		(int)pVideoCapture->get(CV_CAP_PROP_FRAME_COUNT) : 
 		std::min((int)END_FRAME_INDEX, (int)pVideoCapture->get(CV_CAP_PROP_FRAME_COUNT));
-	int imageWidth = 1280, imageHeight = 720;  // <- TODO: read image size with opencv video reader
+	int imageWidth = (int)pVideoCapture->get(CV_CAP_PROP_FRAME_WIDTH), 
+		imageHeight = (int)pVideoCapture->get(CV_CAP_PROP_FRAME_HEIGHT);
 
 
 	//---------------------------------------------------
@@ -108,7 +108,7 @@ int main(int argc, char** argv)
 	hj::stParamTrack trackParams;     // <- Contains whole parameters of tracking module. Using default values is recommended.
 	trackParams.nImageWidth = imageWidth;
 	trackParams.nImageHeight = imageHeight;
-	trackParams.dImageRescale = 0.5;  // <- Heavy influence on the speed of the algorithm.
+	trackParams.dImageRescale = 1.0;  // <- Heavy influence on the speed of the algorithm.
 	trackParams.bVisualize = true;
 	trackParams.bVideoRecord = true;  // <- To recoder the result visualization.
 	trackParams.strVideoRecordPath = std::string(RESULT_PATH);

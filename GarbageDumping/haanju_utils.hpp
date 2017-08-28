@@ -205,55 +205,13 @@ private:
 KeyPointsSet ReadKeypoints(const std::string _file_path);
 
 
-
-
-
-
 double KeyPointsDistance(
 	CKeyPoints _firstKeypoints,
 	CKeyPoints _secondKeypoints,
 	bool _average = false,
-	std::vector<double> *_ptPointWeights = NULL)
-{
-	std::vector<double> pointWeights;
-	assert(_firstKeypoints.points.size() == _secondKeypoints.points.size());
-	if (NULL != _ptPointWeights)
-	{
-		assert(_firstKeypoints.points.size() == _ptPointWeights->size());
-		pointWeights = *_ptPointWeights;
-	}
-	else
-	{
-		pointWeights.resize(_firstKeypoints.points.size(), 1.0);
-	}
+	std::vector<double> *_ptPointWeights = NULL);
 
-	double totalDistance = 0.0;
-	for (int i = 0; i < pointWeights.size(); i++)
-	{
-		totalDistance += pointWeights[i] * (_firstKeypoints.points[i] - _secondKeypoints.points[i]).normL2();
-	}
-	return _average ? totalDistance / (double)pointWeights.size() : totalDistance;
-}
-
-bool CheckOverlap(const CKeyPoints _firstKeyPoints, const CKeyPoints _secondKeyPoints)
-{
-	// examine bounding box
-	if (hj::CheckOverlap(_firstKeyPoints.bbox, _secondKeyPoints.bbox))
-		return true;
-
-	// examine each point whether the point is at the inside of the other bounding box
-	for (int i = 0; i < _firstKeyPoints.points.size(); i++)
-	{
-		if (_secondKeyPoints.bbox.contains(_firstKeyPoints.points[i].cv()))
-			return true;
-	}
-	for (int i = 0; i < _secondKeyPoints.points.size(); i++)
-	{
-		if (_firstKeyPoints.bbox.contains(_secondKeyPoints.points[i].cv()))
-			return true;
-	}
-	return false;
-}
+bool CheckOverlap(const CKeyPoints _firstKeyPoints, const CKeyPoints _secondKeyPoints);
 
 }
 

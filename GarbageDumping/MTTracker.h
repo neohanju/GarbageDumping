@@ -15,7 +15,7 @@
 #include <opencv2/features2d/features2d.hpp>
 #include <opencv2/video/tracking.hpp>
 #include <opencv2/highgui/highgui.hpp>  // for video recording
-#include "haanju_types.hpp"
+#include "haanju_utils.hpp"
 
 namespace hj
 {
@@ -127,12 +127,12 @@ private:
 		cv::Mat _currFrameImage,
 		int _currTimeIndex,
 		int _minTrackedFeaturePoints = 4);
-	TrackletPtQueue MatchingKeypointsAndTracklets(
-		const KeyPointsSet _keyPointsSet,
+	TrackletPtQueue UpdateTracklets(
+		TrackletPtQueue _keyPointsTracklets,
 		TrackletPtQueue _activeTracklets);
-	void DetectionToTrackletMatching(
-		const std::vector<CDetectedObject> &_vecDetectedObjects, 
-		TrackletPtQueue &_queueTracklets);
+	//void DetectionToTrackletMatching(
+	//	const std::vector<CDetectedObject> &_vecDetectedObjects, 
+	//	TrackletPtQueue &_queueTracklets);
 	void TrackletToTrajectoryMatching(const TrackletPtQueue &_queueActiveTracklets);
 	void ResultPackaging();
 
@@ -158,7 +158,7 @@ private:
 		std::vector<cv::Point2f> &_preFeatures, 
 		std::vector<cv::Point2f> &_curFeatures, 
 		std::vector<int> &_inlierFeatureIndex);
-	static double BoxCenterDistanceWRTScale(cv::Rect &_box1, cv::Rect &_box2);
+	static double BoxCenterDistanceWRTScale(cv::Rect2d &_box1, cv::Rect2d &_box2);
 	static double GetTrackingConfidence(cv::Rect &_box, std::vector<cv::Point2f> &_vecTrackedFeatures);
 
 	/* ETC */
@@ -185,7 +185,8 @@ public:
 	unsigned int nInputHeight_;	
 
 	/* input related */
-	std::vector<CDetectedObject> vecDetectedObjects_;
+	//std::vector<CDetectedObject> vecDetectedObjects_;
+	KeyPointsSet vecKeypoints_;
 	hj::CMatFIFOBuffer cImageBuffer_;
 	cv::Size sizeBufferImage_;
 	cv::Mat  matGrayImage_;

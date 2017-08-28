@@ -33,6 +33,7 @@ CTracklet::CTracklet()
 	, timeStart(0)
 	, timeEnd(0)
 	, confidence(0.0)
+	, ptTrajectory(NULL)
 {
 }
 
@@ -82,6 +83,7 @@ CTrajectory::CTrajectory()
 	: id(0)
 	, timeStart(0)
 	, timeEnd(0)
+	, timeLastUpdate(0)
 	, duration(0)
 {
 }
