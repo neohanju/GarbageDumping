@@ -1,6 +1,6 @@
-DATA_ROOT = 'D:/Workspace/Dataset/ETRI/GarbageDumping/CPM_results';
+DATA_ROOT = 'C:\Users\JM\Desktop\pose';
 NUM_POINT_TYPES = 18;
-DO_VIDEO_DEBUG = true;
+DO_VIDEO_DEBUG = false;
 
 x_pos = zeros(0, NUM_POINT_TYPES);
 y_pos = zeros(0, NUM_POINT_TYPES);

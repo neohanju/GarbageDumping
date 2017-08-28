@@ -146,7 +146,6 @@ hj::KeyPointsSet hj::ReadKeypoints(const std::string _strFilePath)
 	KeyPointsSet vec_keypoints;
 	int num_people = 0;
 	double x = 0.0, y = 0.0, confidence = 0.0;
-	double minX = DBL_MAX, maxX = 0.0, minY = DBL_MAX, maxY = 0.0;
 
 	FILE *fp = NULL;
 	try {
@@ -158,7 +157,8 @@ hj::KeyPointsSet hj::ReadKeypoints(const std::string _strFilePath)
 
 		// read box infos
 		for (int row = 0; row < num_people; row++)
-		{			
+		{	
+			double minX = DBL_MAX, maxX = 0.0, minY = DBL_MAX, maxY = 0.0;
 			vec_keypoints[row].points.resize(NUM_KEYPOINT_TYPES);
 			for (int pIdx = 0; pIdx < NUM_KEYPOINT_TYPES; pIdx++)
 			{

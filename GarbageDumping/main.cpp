@@ -80,8 +80,8 @@
 #include "opencv2/highgui/highgui.hpp"
 #include "MTTracker.h"
 
-#define KEYPOINTS_BASE_PATH ("D:\\Workspace\\Dataset\\ETRI\\GarbageDumping\\CPM_results")
-#define VIDEO_BASE_PATH ("D:\\Workspace\\Dataset\\ETRI\\GarbageDumping\\numbering")
+#define KEYPOINTS_BASE_PATH ("C:\\Users\\JM\\Desktop\\pose")
+#define VIDEO_BASE_PATH ("D:\\etri_data\\numbering\\numbering")
 #define RESULT_PATH ("D:\\Workspace\\ExperimentalResult\\ETRI")
 
 #define TARGET_VIDEO ("001")
