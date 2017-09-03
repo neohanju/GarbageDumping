@@ -419,7 +419,7 @@ TrackletPtQueue CMTTracker::ForwardTracking(
 		// estimated box
 		CKeyPoints dummyPoints;
 		dummyPoints.bbox = estimatedBox;
-		_queueTracklets[trackIdx]->insertKeyPoints(dummyPoints, _currTimeIndex);
+		_queueTracklets[trackIdx]->insertKeyPoints(dummyPoints, _currTimeIndex);//_currTimeIndex);
 	}
 
 	return _queueTracklets;
@@ -664,7 +664,7 @@ TrackletPtQueue CMTTracker::UpdateTracklets(
 			trackerIter = this->listCTracklet_.erase(trackerIter);
 			continue;
 		}
-		if ((*trackerIter).timeEnd == (int)nCurrentFrameIdx_)
+		if ((*trackerIter).timeEnd == (int)nCurrentFrameIdx_ && (*trackerIter).length() < stParam_.nMaxTrackletLength) //JM
 			newActiveTracklets.push_back(&(*trackerIter));
 		trackerIter++;
 	}
@@ -768,7 +768,7 @@ void CMTTracker::TrackletToTrajectoryMatching(const TrackletPtQueue &_queueActiv
 	//---------------------------------------------------
 	CHungarianMethod cHungarianMatcher;
 	cHungarianMatcher.Initialize(arrInterTrackletMatchingCost_, (unsigned int)newTracklets.size(), (unsigned int)vecPendedTrajectories.size());
-	stMatchInfo *curMatchInfo = cHungarianMatcher.Match();
+	stMatchInfo* curMatchInfo = cHungarianMatcher.Match();
 	for (size_t matchIdx = 0; matchIdx < curMatchInfo->rows.size(); matchIdx++)
 	{
 		if (maxCost == curMatchInfo->matchCosts[matchIdx]) { continue; }
