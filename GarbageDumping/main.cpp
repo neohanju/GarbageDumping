@@ -82,9 +82,9 @@
 
 #define KEYPOINTS_BASE_PATH ("C:\\Users\\JM\\Desktop\\pose")
 #define VIDEO_BASE_PATH ("D:\\etri_data\\numbering\\numbering")
-#define RESULT_PATH ("D:\\Workspace\\ExperimentalResult\\ETRI")
+#define RESULT_PATH ("D:\\etri_data\\GarbageDumpingResult")
 
-#define TARGET_VIDEO ("001")
+#define TARGET_VIDEO ("003")
 #define START_FRAME_INDEX (0)
 #define END_FRAME_INDEX (-1)
 
@@ -111,7 +111,7 @@ int main(int argc, char** argv)
 	trackParams.dImageRescale = 1.0;  // <- Heavy influence on the speed of the algorithm.
 	trackParams.bVisualize = true;
 	trackParams.bVideoRecord = true;  // <- To recoder the result visualization.
-	trackParams.strVideoRecordPath = std::string(RESULT_PATH);
+	trackParams.strVideoRecordPath = std::string(RESULT_PATH) + "\\" + std::string(TARGET_VIDEO);
 	hj::CMTTracker cTracker;      // <- The instance of a multi-target tracker.
 	cTracker.Initialize(trackParams);
 	

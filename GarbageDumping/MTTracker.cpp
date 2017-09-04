@@ -91,7 +91,7 @@ void CMTTracker::Initialize(stParamTrack &_stParams)
 
 		// make file name
 		char resultOutputFileName[256];
-		sprintf_s(resultOutputFileName, "%s_result_%02d%02d%02d_%02d%02d%02d.avi",
+		sprintf_s(resultOutputFileName, "%s_%02d%02d%02d_%02d%02d%02d.avi",
 			strRecordPath_.c_str(),
 			timeStruct.tm_year + 1900,
 			timeStruct.tm_mon + 1,
@@ -104,7 +104,7 @@ void CMTTracker::Initialize(stParamTrack &_stParams)
 		CvSize imgSize;
 		imgSize.width = stParam_.nImageWidth;
 		imgSize.height = stParam_.nImageHeight;
-		videoWriter_ = cvCreateVideoWriter(resultOutputFileName, CV_FOURCC('M', 'J', 'P', 'G'), 15, imgSize, 1);
+		videoWriter_ = cvCreateVideoWriter(resultOutputFileName, CV_FOURCC('M', 'J', 'P', 'G'), 30, imgSize, 1);
 		bVideoWriterInit_ = true;
 	}
 
@@ -297,6 +297,8 @@ std::deque<CTracklet> CMTTracker::BackwardTracking(
 		newTracklet.direction = BACKWARD;
 		newTracklet.insertKeyPoints(_vecKeyPoints[i], _timeIndex);
 
+		if (_vecKeyPoints[i].bbox.height < stParam_.nMinBoxHeight) { continue; } //JM
+
 		// feature extraction		
 		cvPoint2fSet featurePoints;
 		std::vector<int> vecInlireIndices;
@@ -387,6 +389,7 @@ TrackletPtQueue CMTTracker::ForwardTracking(
 	//---------------------------------------------------
 	// FORWARD FEATURE TRACKING
 	//---------------------------------------------------
+	TrackletPtQueue newActiveTracklets;
 	for (size_t trackIdx = 0; trackIdx < _queueTracklets.size(); trackIdx++)
 	{
 		std::vector<cv::Point2f> vecTrackedFeatures;
@@ -420,9 +423,10 @@ TrackletPtQueue CMTTracker::ForwardTracking(
 		CKeyPoints dummyPoints;
 		dummyPoints.bbox = estimatedBox;
 		_queueTracklets[trackIdx]->insertKeyPoints(dummyPoints, _currTimeIndex);//_currTimeIndex);
+		newActiveTracklets.push_back(_queueTracklets[trackIdx]);
 	}
 
-	return _queueTracklets;
+	return newActiveTracklets;
 }
 
 
@@ -603,7 +607,7 @@ TrackletPtQueue CMTTracker::UpdateTracklets(
 		(unsigned int)this->queueActiveTracklets_.size());
 	stMatchInfo *curMatchInfo = cHungarianMatcher.Match();
 	std::vector<bool> vecKeypointMatchedWithTracklet(_keyPointsTracklets.size(), false);
-	for (size_t matchIdx = 0; matchIdx < curMatchInfo->rows.size(); matchIdx++)
+	for (size_t matchIdx = 0; matchIdx < curMatchInfo->rows.size(); matchIdx++) 
 	{
 		if (maxCost == curMatchInfo->matchCosts[matchIdx]) { continue; }
 		CTracklet *curKeypoint = _keyPointsTracklets[curMatchInfo->rows[matchIdx]];
@@ -621,7 +625,7 @@ TrackletPtQueue CMTTracker::UpdateTracklets(
 		curTracklet->confidence = ((curTracklet->length() - 1) * curTracklet->confidence + curKeypoint->queueKeyPoints.front().confidence) / (double)curTracklet->length();
 		curTracklet->replaceKeyPoints(curKeypoint->queueKeyPoints.front(), curKeypoint->timeStart);
 
-		vecKeypointMatchedWithTracklet[matchIdx] = true;
+		vecKeypointMatchedWithTracklet[curMatchInfo->rows[matchIdx]] = true;//[matchIdx] = true; //JM
 
 		// update features with detection (after result packaging)
 		curTracklet->featurePointsHistory.back() = curKeypoint->featurePointsHistory.front();
@@ -1308,7 +1312,7 @@ void CMTTracker::VisualizeResult()
 	/* frame information */
 	char strFrameInfo[100];
 	sprintf_s(strFrameInfo, "%04d", this->nCurrentFrameIdx_);
-	cv::rectangle(matTrackingResult_, cv::Rect(5, 2, 60, 22), cv::Scalar(0, 0, 0), CV_FILLED);
+	cv::rectangle(matTrackingResult_, cv::Rect(5, 2, 100, 22), cv::Scalar(0, 0, 0), CV_FILLED);
 	cv::putText(matTrackingResult_, strFrameInfo, cv::Point(6, 20), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(255, 255, 255));
 
 	/* detections */

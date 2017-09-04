@@ -47,6 +47,7 @@ struct stParamTrack
 		, dMaxTranslationDistance(30.0)
 		, dMaxDepthDistance(30.0)
 		, nMaxPendingTime(100)
+		, nMinBoxHeight(100)
 		, bVisualize(false)
 		, bVideoRecord(false)
 		, strVideoRecordPath("")
@@ -82,6 +83,7 @@ struct stParamTrack
 	double dMaxTranslationDistance;
 	double dMaxDepthDistance;
 	int    nMaxPendingTime;
+	int    nMinBoxHeight;
 
 	/* visualization for debugging */
 	bool bVisualize;
