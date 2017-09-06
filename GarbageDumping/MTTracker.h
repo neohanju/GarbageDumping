@@ -166,6 +166,7 @@ private:
 	/* ETC */
 	double GetEstimatedDepth(const cv::Mat _frameImage, const cv::Rect _objectBox);
 	CObjectInfo GetObjectInfo(CTrajectory *_curTrajectory);
+	void HeadDetectPoint(KeyPointsSet& _vecCurKeyPoints, cv::Mat _curFrame);
 
 	/* VISUALIZATION */
 	void VisualizeResult();
@@ -227,6 +228,18 @@ public:
 	bool bVideoWriterInit_;
 	std::string strRecordPath_;
 	CvVideoWriter *videoWriter_;
+
+	/* head patch related */
+	cv::Mat matHeadPatch_;
+};
+
+///////////////////////////////////////
+//Pose KeyPoint access
+///////////////////////////////////////
+
+enum KeypointBaseIdx{
+	NOSE = 0,
+	NECK
 };
 
 }

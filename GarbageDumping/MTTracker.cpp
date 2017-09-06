@@ -180,6 +180,9 @@ CTrackResult CMTTracker::Track(
 	// validate input size
 	assert(bInit_ && _curFrame.rows == matGrayImage_.rows
 		&& _curFrame.cols == matGrayImage_.cols);
+	
+	matHeadPatch_ = _curFrame.clone();
+	HeadDetectPoint(matHeadPatch_, _vecCurKeyPoints);
 	vecKeypoints_ = _vecCurKeyPoints;
 
 	// frame buffering
@@ -1473,8 +1476,41 @@ void CMTTracker::DrawBoxWithID(
 	}
 }
 
+std::vector<cv::Rect2d> CMTTracker::HeadDetectPoint(cv::Mat _curFrame, KeyPointsSet& _vecCurKeyPoints)
+{
+	std::vector<cv::Rect2d> vecHeadBox_;
+
+	for (KeyPointsSet::iterator iter = _vecCurKeyPoints.begin(); iter != _vecCurKeyPoints.end();)
+	{
+		//Check Nose Point
+		if ((*iter).points.at(NOSE * 3).confidence == 0 || (*iter).points.at(NOSE * 3).confidence == 0)
+		{
+			iter = _vecCurKeyPoints.erase((iter));
+			continue;
+		}
+
+		//Calc nose to neck point
+		double distance;
+		cv::Point2d diff, topLeft, bottomRight;
+		cv::Mat headPatch;
+
+		distance = cv::norm(diff);
+		topLeft = cv::Point2d((*iter).points.at(NOSE * 3).x + distance, (*iter).points.at(NOSE * 3).y - distance);
+		bottomRight = cv::Point2d((*iter).points.at(NOSE * 3).x - distance, (*iter).points.at(NOSE * 3).y + distance);
+		
+		
+		//Save headbox vector
+		vecHeadBox_.push_back(cv::Rect2d(topLeft, bottomRight));
+		//headPatch = _curFrame(headBox);
+		//cv::imshow("haed", headPatch);
+
+		iter++;
+	}
+
+	return vecHeadBox_;
+}
+
 }
 
 //()()
 //('')HAANJU.YOO
-
