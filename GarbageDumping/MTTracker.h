@@ -166,7 +166,17 @@ private:
 	/* ETC */
 	double GetEstimatedDepth(const cv::Mat _frameImage, const cv::Rect _objectBox);
 	CObjectInfo GetObjectInfo(CTrajectory *_curTrajectory);
-	void HeadDetectPoint(KeyPointsSet& _vecCurKeyPoints, cv::Mat _curFrame);
+	std::vector<cv::Rect2d> HeadDetectPoint(/*cv::Mat _curFrame,*/ KeyPointsSet& _vecCurKeyPoints);
+	std::deque<CTracklet> UsingHeadTracking(
+		TrackletPtQueue &_queueTracklets,
+		std::vector<CKeyPoints> &_vecKeyPoints,
+		//hj::CMatFIFOBuffer &_imageSet,
+		//std::vector<cv::Rect2d> vecHeadPatch_,
+		int _timeIndex);
+
+	TrackletPtQueue CMTTracker::UpdateHeadTracklet(
+		TrackletPtQueue _keyPointsTracklets,
+		TrackletPtQueue _activeTracklets);
 
 	/* VISUALIZATION */
 	void VisualizeResult();
@@ -230,7 +240,8 @@ public:
 	CvVideoWriter *videoWriter_;
 
 	/* head patch related */
-	cv::Mat matHeadPatch_;
+	//cv::Mat matHeadPatch_;
+	std::vector<cv::Rect2d> vecHeadPatch_;
 };
 
 ///////////////////////////////////////

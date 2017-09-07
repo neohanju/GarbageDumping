@@ -181,8 +181,8 @@ CTrackResult CMTTracker::Track(
 	assert(bInit_ && _curFrame.rows == matGrayImage_.rows
 		&& _curFrame.cols == matGrayImage_.cols);
 	
-	matHeadPatch_ = _curFrame.clone();
-	HeadDetectPoint(matHeadPatch_, _vecCurKeyPoints);
+	//matHeadPatch_ = _curFrame.clone();
+	vecHeadPatch_ = HeadDetectPoint(/*matHeadPatch_,*/ _vecCurKeyPoints);
 	vecKeypoints_ = _vecCurKeyPoints;
 
 	// frame buffering
@@ -193,6 +193,7 @@ CTrackResult CMTTracker::Track(
 	matTrackingResult_ = _curFrame.clone();
 	//cv::cvtColor(_curFrame, matTrackingResult_, cv::COLOR_GRAY2BGR);
 
+/*
 	// backward feature tracking with newly inserted keypoints
 	std::deque<CTracklet> keypointTracklets 
 		= BackwardTracking(
@@ -219,8 +220,26 @@ CTrackResult CMTTracker::Track(
 				stParam_.nMinNumFeatures);
 	}
 
+	
+
 	// keypoints to tracklet matching
 	queueActiveTracklets_ = UpdateTracklets(backwardTracklets, queueActiveTracklets_);
+*/
+	
+	std::deque<CTracklet> keypointTracklets
+		= UsingHeadTracking(queueActiveTracklets_, _vecCurKeyPoints, nCurrentFrameIdx_);
+	
+
+	TrackletPtQueue backwardTracklets;
+	std::list<CTracklet> backwardTrackletsOrigins;
+	for (int i = 0; i < keypointTracklets.size(); i++)
+	{
+		backwardTrackletsOrigins.push_back(keypointTracklets[i]);
+		backwardTracklets.push_back(&backwardTrackletsOrigins.back());
+	}
+
+	queueActiveTracklets_ = UpdateHeadTracklet(backwardTracklets, queueActiveTracklets_);
+
 
 	/* trajectory management (tracklet-to-trajectory matching) */
 	TrackletToTrajectoryMatching(queueActiveTracklets_);
@@ -425,7 +444,7 @@ TrackletPtQueue CMTTracker::ForwardTracking(
 		// estimated box
 		CKeyPoints dummyPoints;
 		dummyPoints.bbox = estimatedBox;
-		_queueTracklets[trackIdx]->insertKeyPoints(dummyPoints, _currTimeIndex);//_currTimeIndex);
+		_queueTracklets[trackIdx]->insertKeyPoints(dummyPoints, _currTimeIndex);
 		newActiveTracklets.push_back(_queueTracklets[trackIdx]);
 	}
 
@@ -1476,7 +1495,7 @@ void CMTTracker::DrawBoxWithID(
 	}
 }
 
-std::vector<cv::Rect2d> CMTTracker::HeadDetectPoint(cv::Mat _curFrame, KeyPointsSet& _vecCurKeyPoints)
+std::vector<cv::Rect2d> CMTTracker::HeadDetectPoint(/*cv::Mat _curFrame,*/ KeyPointsSet& _vecCurKeyPoints)
 {
 	std::vector<cv::Rect2d> vecHeadBox_;
 
@@ -1494,6 +1513,8 @@ std::vector<cv::Rect2d> CMTTracker::HeadDetectPoint(cv::Mat _curFrame, KeyPoints
 		cv::Point2d diff, topLeft, bottomRight;
 		cv::Mat headPatch;
 
+		diff = cv::Point2d((*iter).points.at(NOSE * 3).x, (*iter).points.at(NOSE * 3).y) -
+			cv::Point2d((*iter).points.at(NECK * 3).x, (*iter).points.at(NOSE * 3).y);
 		distance = cv::norm(diff);
 		topLeft = cv::Point2d((*iter).points.at(NOSE * 3).x + distance, (*iter).points.at(NOSE * 3).y - distance);
 		bottomRight = cv::Point2d((*iter).points.at(NOSE * 3).x - distance, (*iter).points.at(NOSE * 3).y + distance);
@@ -1501,8 +1522,6 @@ std::vector<cv::Rect2d> CMTTracker::HeadDetectPoint(cv::Mat _curFrame, KeyPoints
 		
 		//Save headbox vector
 		vecHeadBox_.push_back(cv::Rect2d(topLeft, bottomRight));
-		//headPatch = _curFrame(headBox);
-		//cv::imshow("haed", headPatch);
 
 		iter++;
 	}
@@ -1510,6 +1529,304 @@ std::vector<cv::Rect2d> CMTTracker::HeadDetectPoint(cv::Mat _curFrame, KeyPoints
 	return vecHeadBox_;
 }
 
+
+std::deque<CTracklet> CMTTracker::UsingHeadTracking(
+	TrackletPtQueue &_queueTracklets,
+	std::vector<CKeyPoints> &_vecKeyPoints,
+	//hj::CMatFIFOBuffer &_imageSet,
+	//std::vector<cv::Rect2d> vecHeadPatch_,
+	int _timeIndex)
+{
+	
+	//---------------------------------------------------
+	// USING HEAD TRACKING
+	//---------------------------------------------------
+	std::deque<CTracklet> generatedTracklets;
+	//for (size_t trackIdx = 0; trackIdx < _queueTracklets.size(); trackIdx++)
+	//{
+	//	float distance;
+	//	for (std::vector<CKeyPoints>::iterator KeyPointItor = _vecKeyPoints.begin();
+	//		KeyPointItor != _vecKeyPoints.end();)
+	//	{
+	//		//상대적 거리 관련.
+	//		float ratio = _queueTracklets[trackIdx]->currentBox().height / (*KeyPointItor).bbox.height;
+	//		cv::Point2d diff = cv::Point2d(_queueTracklets[trackIdx]->queueKeyPoints.back().points.at(NOSE * 3).x, _queueTracklets[trackIdx]->queueKeyPoints.back().points.at(NOSE * 3).y) -
+	//			cv::Point2d((*KeyPointItor).points.at(NOSE * 3).x, (*KeyPointItor).points.at(NOSE * 3).y);
+	//		distance = cv::norm(diff);
+
+
+	//		if (distance < (*KeyPointItor).bbox.height)  // 계산된 distance가 새로 들어온 keypoint의 키보다 작으면
+	//		{
+	//			//TODO: Matching tracklet include validation.
+	//			_queueTracklets[trackIdx]->insertKeyPoints((*KeyPointItor), _currTimeIndex);
+	//		}
+
+	//		KeyPointItor++;
+	//	}
+	//	keypointTracklet_.push_back(_queueTracklets[trackIdx]);
+	//}
+
+	for (int i = 0; i < _vecKeyPoints.size(); i++)
+	{
+		CTracklet newTracklet;
+		newTracklet.id = 0;
+		newTracklet.direction = BACKWARD;
+		newTracklet.insertKeyPoints(_vecKeyPoints[i], _timeIndex);
+
+		//Tracking using head distance
+		int timeIndex = _timeIndex - 1;
+		for (int bufSize = 0; bufSize < 5; bufSize++)       //TODO: remove bufSize using parameter
+		{
+			//TODO: Matching Algorithm
+
+			newTracklet.queueKeyPoints.push_back(_vecKeyPoints[i]);
+			newTracklet.timeEnd = timeIndex--;
+		}
+
+		generatedTracklets.push_back(newTracklet);
+	}
+
+	return generatedTracklets;
+}
+
+
+TrackletPtQueue CMTTracker::UpdateHeadTracklet(
+	TrackletPtQueue _keyPointsTracklets,
+	TrackletPtQueue _activeTracklets)
+{
+	/////////////////////////////////////////////////////////////////////////////
+	// CALCULATE MATCHING COSTS
+	/////////////////////////////////////////////////////////////////////////////
+	std::vector<float> arrKeyPointToTrackletMatchingCost_(
+		_keyPointsTracklets.size() * _activeTracklets.size(),
+		std::numeric_limits<float>::infinity());
+
+	// to determine occlusion
+	std::vector<std::deque<int>> trackletIdxOfFeaturePoints(_keyPointsTracklets.size());
+
+	//---------------------------------------------------
+	// COST WITH BI-DIRECTIONAL TRACKING
+	//---------------------------------------------------
+	for (int t = 0; t < _activeTracklets.size(); t++)
+	{
+		CTracklet *curTracklet = _activeTracklets[t];
+		for (int k = 0, costPos = t;
+			k < _keyPointsTracklets.size();
+			k++, costPos += (int)_activeTracklets.size())
+		{
+			// validate with backward tracking result
+			if (!hj::CheckOverlap(curTracklet->currentBox(), _keyPointsTracklets[k]->currentBox()))
+				continue;
+
+			// check the candidate owning tracklets of keypoints
+			for (int p = 0; p < curTracklet->featurePointsHistory.back().size(); p++)
+			{
+				if (_keyPointsTracklets[k]->currentBox().contains(curTracklet->featurePointsHistory.back()[p]))
+				{
+					trackletIdxOfFeaturePoints[k].push_back(t);
+					break;
+				}
+			}
+
+			// determine the possible longest comparison interval
+			size_t lengthForCompare = std::min((size_t)stParam_.nBackTrackingLength,
+				std::min(curTracklet->queueKeyPoints.size(), _keyPointsTracklets[k]->queueKeyPoints.size()));
+
+			// croll tracker boxes for comparison (reverse ordering)
+			size_t numBoxCopy = lengthForCompare - 1;
+			std::vector<cv::Rect2d> vecTrackerBoxes;
+			vecTrackerBoxes.reserve(lengthForCompare);
+			for (int i = 0; i < std::min(lengthForCompare, curTracklet->queueKeyPoints.size()); i++)
+			{
+				vecTrackerBoxes.push_back(curTracklet->queueKeyPoints[curTracklet->queueKeyPoints.size() - i - 1].bbox);
+			}
+
+			// box cost with bidirectional tracking
+			double boxCost = 0.0;
+			cv::Rect2d keypointBox, trackletBox;
+			int keypointBoxPos = 0;
+			for (int boxIdx = 0; boxIdx < lengthForCompare; boxIdx++)
+			{
+				keypointBoxPos = (int)_keyPointsTracklets[k]->queueKeyPoints.size() - 1 - boxIdx;
+				keypointBox = _keyPointsTracklets[k]->queueKeyPoints[keypointBoxPos].bbox;
+				trackletBox = vecTrackerBoxes[boxIdx];
+
+				if (!hj::CheckOverlap(keypointBox, trackletBox) // rejection criterion
+					|| stParam_.dMaxBoxDistance < BoxCenterDistanceWRTScale(keypointBox, trackletBox)
+					|| stParam_.dMinBoxOverlapRatio > hj::OverlappedArea(keypointBox, trackletBox) / std::min(keypointBox.area(), trackletBox.area())
+					|| stParam_.dMaxBoxCenterDiffRatio * std::max(keypointBox.width, trackletBox.width) < hj::NormL2(hj::Center(keypointBox) - hj::Center(trackletBox)))
+				{
+					boxCost = std::numeric_limits<double>::infinity();
+					break;
+				}
+				boxCost += BoxCenterDistanceWRTScale(trackletBox, keypointBox);
+			}
+			if (std::numeric_limits<double>::infinity() == boxCost) { continue; }
+			boxCost /= (double)lengthForCompare;
+
+			arrKeyPointToTrackletMatchingCost_[costPos] = (float)boxCost;
+		}
+	}
+
+	//---------------------------------------------------
+	// OCCLUSION HANDLING
+	//---------------------------------------------------	
+	// If a detection box contains feature points from more than one tracker, we examine whether there exists a
+	// dominant tracker or not. If there is no dominant tracker, that means the ownership of the detection is 
+	// not clear, we set the scores between that detection and trackers to infinite. This yields termination of
+	// all related trackers.
+
+	int numFeatureFromMajorTracker = 0,
+		numFeatureFromCurrentTracker = 0,
+		majorTrackerIdx = 0,
+		currentTrackerIdx = 0;
+
+	for (size_t detectIdx = 0, costPos = 0;
+		detectIdx < _keyPointsTracklets.size();
+		detectIdx++, costPos += _activeTracklets.size())
+	{
+		if (0 == trackletIdxOfFeaturePoints[detectIdx].size()) { continue; }
+
+		// find dominant tracker of the detection
+		numFeatureFromMajorTracker = numFeatureFromCurrentTracker = 0;
+		majorTrackerIdx = trackletIdxOfFeaturePoints[detectIdx].front();
+		currentTrackerIdx = trackletIdxOfFeaturePoints[detectIdx].front();
+		for (int featureIdx = 0; featureIdx < trackletIdxOfFeaturePoints[detectIdx].size(); featureIdx++)
+		{
+			if (currentTrackerIdx == trackletIdxOfFeaturePoints[detectIdx][featureIdx])
+			{
+				// we assume that the same tracker indices in 'trackletIdxOfFeaturePoints' are grouped together
+				numFeatureFromCurrentTracker++;
+				continue;
+			}
+
+			if (numFeatureFromCurrentTracker > numFeatureFromMajorTracker)
+			{
+				majorTrackerIdx = currentTrackerIdx;
+				numFeatureFromMajorTracker = numFeatureFromCurrentTracker;
+			}
+			currentTrackerIdx = trackletIdxOfFeaturePoints[detectIdx][featureIdx];
+			numFeatureFromCurrentTracker = 0;
+		}
+
+		// case 1: only one tracker has its features points in the detecion box
+		if (trackletIdxOfFeaturePoints[detectIdx].front() == currentTrackerIdx)
+		{
+			continue;
+		}
+
+		// case 2: there is a domninant tracker among related trackers
+		if (numFeatureFromMajorTracker > trackletIdxOfFeaturePoints[detectIdx].size() * stParam_.dMinOpticalFlowMajorityRatio)
+		{
+			continue;
+		}
+
+		// case 3: more than one trackers are related and there is no dominant tracker
+		for (size_t infCostPos = costPos; infCostPos < costPos + _activeTracklets.size(); infCostPos++)
+		{
+			arrKeyPointToTrackletMatchingCost_[infCostPos] = std::numeric_limits<float>::infinity();
+		}
+	}
+
+	//---------------------------------------------------
+	// INFINITE HANDLING
+	//---------------------------------------------------
+	// To ensure a proper operation of our Hungarian implementation, we convert infinite to the finite value
+	// that is little bit (=100.0f) greater than the maximum finite cost in the original cost function.
+	float maxCost = -1000.0f;
+	for (int costIdx = 0; costIdx < arrKeyPointToTrackletMatchingCost_.size(); costIdx++)
+	{
+		if (!_finitef(arrKeyPointToTrackletMatchingCost_[costIdx])) { continue; }
+		if (maxCost < arrKeyPointToTrackletMatchingCost_[costIdx]) { maxCost = arrKeyPointToTrackletMatchingCost_[costIdx]; }
+	}
+	maxCost = maxCost + 100.0f;
+	for (int costIdx = 0; costIdx < arrKeyPointToTrackletMatchingCost_.size(); costIdx++)
+	{
+		if (_finitef(arrKeyPointToTrackletMatchingCost_[costIdx])) { continue; }
+		arrKeyPointToTrackletMatchingCost_[costIdx] = maxCost;
+	}
+
+
+	/////////////////////////////////////////////////////////////////////////////
+	// MATCHING
+	/////////////////////////////////////////////////////////////////////////////
+	trackingResult_.objectInfos.clear();
+	CHungarianMethod cHungarianMatcher;
+	cHungarianMatcher.Initialize(
+		arrKeyPointToTrackletMatchingCost_,
+		(unsigned int)_keyPointsTracklets.size(),
+		(unsigned int)this->queueActiveTracklets_.size());
+	stMatchInfo *curMatchInfo = cHungarianMatcher.Match();
+	std::vector<bool> vecKeypointMatchedWithTracklet(_keyPointsTracklets.size(), false);
+	for (size_t matchIdx = 0; matchIdx < curMatchInfo->rows.size(); matchIdx++)
+	{
+		if (maxCost == curMatchInfo->matchCosts[matchIdx]) { continue; }
+		CTracklet *curKeypoint = _keyPointsTracklets[curMatchInfo->rows[matchIdx]];
+		CTracklet *curTracklet = _activeTracklets[curMatchInfo->cols[matchIdx]];
+
+		//---------------------------------------------------
+		// MATCHING VALIDATION
+		//---------------------------------------------------
+		if (curTracklet->length() >= stParam_.nMaxTrackletLength) { continue; }
+
+		//---------------------------------------------------
+		// TRACKER UPDATE
+		//---------------------------------------------------		
+		curTracklet->timeEnd = curKeypoint->timeStart; // keypoint tracklet has a backward direction
+		curTracklet->confidence = ((curTracklet->length() - 1) * curTracklet->confidence + curKeypoint->queueKeyPoints.front().confidence) / (double)curTracklet->length();
+		curTracklet->replaceKeyPoints(curKeypoint->queueKeyPoints.front(), curKeypoint->timeStart);
+
+		vecKeypointMatchedWithTracklet[curMatchInfo->rows[matchIdx]] = true;//[matchIdx] = true; //JM
+
+																			// update features with detection (after result packaging)
+		curTracklet->featurePointsHistory.back() = curKeypoint->featurePointsHistory.front();
+	}
+	cHungarianMatcher.Finalize();
+
+
+	/////////////////////////////////////////////////////////////////////////////
+	// TRACKLET GENERATION
+	/////////////////////////////////////////////////////////////////////////////	
+	for (int k = 0; k < _keyPointsTracklets.size(); k++)
+	{
+		if (vecKeypointMatchedWithTracklet[k]) { continue; }
+
+		CTracklet newTracklet;
+		newTracklet.id = this->nNewTrackletID_++;
+		newTracklet.timeStart = this->nCurrentFrameIdx_;
+		newTracklet.timeEnd = this->nCurrentFrameIdx_;
+		newTracklet.direction = FORWARD;
+		newTracklet.queueKeyPoints.push_back(_keyPointsTracklets[k]->queueKeyPoints.front());
+		newTracklet.featurePointsHistory.push_back(_keyPointsTracklets[k]->featurePointsHistory.front());
+		newTracklet.confidence = _keyPointsTracklets[k]->confidence;
+
+		// generate tracklet instance
+		this->listCTracklet_.push_back(newTracklet);
+	}
+
+
+	/////////////////////////////////////////////////////////////////////////////
+	// TRACKER TERMINATION
+	/////////////////////////////////////////////////////////////////////////////
+	TrackletPtQueue newActiveTracklets;
+	for (std::list<CTracklet>::iterator trackerIter = listCTracklet_.begin();
+		trackerIter != listCTracklet_.end();
+		/*trackerIter++*/)
+	{
+		if ((*trackerIter).timeEnd + stParam_.nMaxPendingTime < (int)nCurrentFrameIdx_)
+		{
+			// termination			
+			trackerIter = this->listCTracklet_.erase(trackerIter);
+			continue;
+		}
+		if ((*trackerIter).timeEnd == (int)nCurrentFrameIdx_ && (*trackerIter).length() < stParam_.nMaxTrackletLength) //JM
+			newActiveTracklets.push_back(&(*trackerIter));
+		trackerIter++;
+	}
+	queueActiveTracklets_ = newActiveTracklets;
+
+	return queueActiveTracklets_;
+}
 }
 
 //()()
