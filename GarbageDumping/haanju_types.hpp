@@ -77,6 +77,7 @@ public:
 public:
 	std::vector<stKeyPoint> points;
 	cv::Rect2d bbox;  // bounding box
+	cv::Point2d headPoint;
 	double confidence;
 };
 typedef std::vector<CKeyPoints> KeyPointsSet;
@@ -147,6 +148,7 @@ public:
 	cv::Rect2d currentBox() { assert(queueKeyPoints.size() > 0);  return queueKeyPoints.back().bbox; }
 	void insertKeyPoints(const CKeyPoints _keyPoints, int _timeIndex);
 	void replaceKeyPoints(const CKeyPoints _keyPoints, int _timeIndex);
+	cv::Point2d curHeadPoint() { return this->queueKeyPoints.front().headPoint; } 
 
 	//----------------------------------------------------------------
 	// VARIABLES
@@ -175,6 +177,7 @@ class CTrajectory
 public:
 	CTrajectory();
 	~CTrajectory();
+	cv::Point2d latestHeadPoint() { return this->tracklets.back()->queueKeyPoints.back().headPoint; }
 
 	//----------------------------------------------------------------
 	// VARIABLES

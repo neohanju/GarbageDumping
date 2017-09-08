@@ -166,13 +166,13 @@ private:
 	/* ETC */
 	double GetEstimatedDepth(const cv::Mat _frameImage, const cv::Rect _objectBox);
 	CObjectInfo GetObjectInfo(CTrajectory *_curTrajectory);
-	std::vector<cv::Rect2d> HeadDetectPoint(/*cv::Mat _curFrame,*/ KeyPointsSet& _vecCurKeyPoints);
+
+	/* USING ONLY HEAD INFO */
+	std::vector<cv::Rect2d> HeadDetectPoint(KeyPointsSet& _vecCurKeyPoints);
 	std::deque<CTracklet> UsingHeadTracking(
-		TrackletPtQueue &_queueTracklets,
 		std::vector<CKeyPoints> &_vecKeyPoints,
-		//hj::CMatFIFOBuffer &_imageSet,
-		//std::vector<cv::Rect2d> vecHeadPatch_,
 		int _timeIndex);
+	void HeadTrackletToTrajectory(const TrackletPtQueue &_queueActiveTracklets);
 
 	TrackletPtQueue CMTTracker::UpdateHeadTracklet(
 		TrackletPtQueue _keyPointsTracklets,
@@ -242,6 +242,7 @@ public:
 	/* head patch related */
 	//cv::Mat matHeadPatch_;
 	std::vector<cv::Rect2d> vecHeadPatch_;
+	
 };
 
 ///////////////////////////////////////
@@ -250,7 +251,11 @@ public:
 
 enum KeypointBaseIdx{
 	NOSE = 0,
-	NECK
+	NECK,
+	REYE = 14,
+	LEYE,
+	REAR,
+	LEAR
 };
 
 }
