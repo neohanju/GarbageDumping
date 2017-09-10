@@ -168,7 +168,7 @@ private:
 	CObjectInfo GetObjectInfo(CTrajectory *_curTrajectory);
 
 	/* USING ONLY HEAD INFO */
-	std::vector<cv::Rect2d> HeadDetectPoint(KeyPointsSet& _vecCurKeyPoints);
+	std::vector<cv::Rect2d> DetectHeadPoint(KeyPointsSet& _vecCurKeyPoints);
 	std::deque<CTracklet> UsingHeadTracking(
 		std::vector<CKeyPoints> &_vecKeyPoints,
 		int _timeIndex);
