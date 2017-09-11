@@ -1713,6 +1713,7 @@ void CMTTracker::UpdateTrajectories(
 
 	for (size_t matchIdx = 0; matchIdx < inactiveMatchInfo->rows.size(); matchIdx++)
 	{
+		if (vecKeypointMatchedWithTracklet[inactiveMatchInfo->rows[matchIdx]]) { continue; }
 		if (maxCost == inactiveMatchInfo->matchCosts[matchIdx]) { continue; }
 		
 		CKeyPoints *curKeyPoint = &_vecCurKeyPoints[inactiveMatchInfo->rows[matchIdx]];
