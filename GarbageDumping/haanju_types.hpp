@@ -77,6 +77,7 @@ public:
 public:
 	std::vector<stKeyPoint> points;
 	cv::Rect2d bbox;  // bounding box
+	cv::Rect2d headBox;
 	cv::Point2d headPoint;
 	double confidence;
 };
@@ -177,7 +178,7 @@ class CTrajectory
 public:
 	CTrajectory();
 	~CTrajectory();
-	cv::Point2d latestHeadPoint() { return this->tracklets.back()->queueKeyPoints.back().headPoint; }
+	cv::Point2d latestHeadPoint() { return this->headPoint.back(); }
 
 	//----------------------------------------------------------------
 	// VARIABLES
@@ -190,6 +191,8 @@ public:
 	int duration;
 	double confidence;
 	std::deque<cv::Rect2d> boxes;
+	std::deque<cv::Rect2d> headBoxes; //jm
+	std::deque<cv::Point2d> headPoint;      //jm
 	TrackletPtQueue tracklets;
 };
 typedef std::deque<CTrajectory> TrajectoryVector;

@@ -46,7 +46,7 @@ struct stParamTrack
 		, dMinOpticalFlowMajorityRatio(0.5)
 		, dMaxTranslationDistance(30.0)
 		, dMaxDepthDistance(30.0)
-		, nMaxPendingTime(100)
+		, nMaxPendingTime(10)
 		, nMinBoxHeight(100)
 		, bVisualize(false)
 		, bVideoRecord(false)
@@ -168,15 +168,11 @@ private:
 	CObjectInfo GetObjectInfo(CTrajectory *_curTrajectory);
 
 	/* USING ONLY HEAD INFO */
-	std::vector<cv::Rect2d> DetectHeadPoint(KeyPointsSet& _vecCurKeyPoints);
-	std::deque<CTracklet> UsingHeadTracking(
-		std::vector<CKeyPoints> &_vecKeyPoints,
-		int _timeIndex);
-	void HeadTrackletToTrajectory(const TrackletPtQueue &_queueActiveTracklets);
-
-	TrackletPtQueue CMTTracker::UpdateHeadTracklet(
-		TrackletPtQueue _keyPointsTracklets,
-		TrackletPtQueue _activeTracklets);
+	void EstimateHead(KeyPointsSet& _vecCurKeyPoints);
+	void UpdateTrajectories(
+		const KeyPointsSet _vecCurKeyPoints,
+		std::deque<CTrajectory> _activeTrajectories,
+		std::deque<CTrajectory> _inactiveTrajectories);
 
 	/* VISUALIZATION */
 	void VisualizeResult();
@@ -214,7 +210,10 @@ public:
 	/* trajectory related */
 	unsigned int             nNewTrajectoryID_;
 	std::list<CTrajectory>   listCTrajectories_;
-	std::deque<CTrajectory*> queueActiveTrajectories_;	
+	std::deque<CTrajectory*> queueActiveTrajectories_;
+	//head Track related
+	std::deque<CTrajectory> activeTrajectories_;
+	std::deque<CTrajectory> inactiveTrajectories_;
 
 	/* matching related */
 	std::vector<float> arrKeyPointToTrackletMatchingCost_;

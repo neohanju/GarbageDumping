@@ -182,7 +182,7 @@ CTrackResult CMTTracker::Track(
 		&& _curFrame.cols == matGrayImage_.cols);
 	
 	//matHeadPatch_ = _curFrame.clone();
-	vecHeadPatch_ = DetectHeadPoint(/*matHeadPatch_,*/ _vecCurKeyPoints);
+	EstimateHead(_vecCurKeyPoints);
 	vecKeypoints_ = _vecCurKeyPoints;
 
 	// frame buffering
@@ -229,20 +229,7 @@ CTrackResult CMTTracker::Track(
 	//TrackletToTrajectoryMatching(queueActiveTracklets_);
 */
 	
-	std::deque<CTracklet> keypointTracklets
-		= UsingHeadTracking(_vecCurKeyPoints, nCurrentFrameIdx_);
-	
-
-	TrackletPtQueue backwardTracklets;
-	std::list<CTracklet> backwardTrackletsOrigins;
-	for (int i = 0; i < keypointTracklets.size(); i++)
-	{
-		backwardTrackletsOrigins.push_back(keypointTracklets[i]);
-		backwardTracklets.push_back(&backwardTrackletsOrigins.back());
-	}
-
-	queueActiveTracklets_ = UpdateHeadTracklet(backwardTracklets, queueActiveTracklets_);
-	HeadTrackletToTrajectory(queueActiveTracklets_);
+	UpdateTrajectories(vecKeypoints_, activeTrajectories_, inactiveTrajectories_);
 
 	///* result packaging */
 	//ResultPackaging();	
@@ -1384,20 +1371,36 @@ void CMTTracker::VisualizeResult()
 		//hj::DrawBoxWithID(matTrackingResult_, curObject->box, curObject->id, 0, 0, &vecColors_);
 	}
 
-	/* trajectories */
-	for (int trajIdx = 0; trajIdx < queueActiveTrajectories_.size(); trajIdx++)
-	{
-		CTrajectory *curTrajectory = queueActiveTrajectories_[trajIdx];
+	///* trajectories */
+	//queueTrajectories base visualize
+	//for (int trajIdx = 0; trajIdx < queueActiveTrajectories_.size(); trajIdx++)
+	//{
+	//	CTrajectory *curTrajectory = queueActiveTrajectories_[trajIdx];
 
-		if (curTrajectory->timeEnd != this->nCurrentFrameIdx_) { continue; }
+	//	if (curTrajectory->timeEnd != this->nCurrentFrameIdx_) { continue; }
+	//	DrawBoxWithID(
+	//		matTrackingResult_, 
+	//		hj::Rescale(curTrajectory->boxes.back(), stParam_.dImageRescaleRecover), 
+	//		curTrajectory->id, 
+	//		0, 
+	//		0,
+	//		getColorByID(curTrajectory->id, &vecColors_));
+	//}
+
+	//activateTRajectories based visualize
+	for (int trajIdx = 0; trajIdx < activeTrajectories_.size(); trajIdx++)
+	{
+		if (activeTrajectories_[trajIdx].timeEnd != this->nCurrentFrameIdx_) { continue; }
+		
 		DrawBoxWithID(
-			matTrackingResult_, 
-			hj::Rescale(curTrajectory->boxes.back(), stParam_.dImageRescaleRecover), 
-			curTrajectory->id, 
-			0, 
+			matTrackingResult_,
+			hj::Rescale(activeTrajectories_[trajIdx].boxes.back(), stParam_.dImageRescaleRecover),
+			activeTrajectories_[trajIdx].id,
 			0,
-			getColorByID(curTrajectory->id, &vecColors_));
+			0,
+			getColorByID(activeTrajectories_[trajIdx].id, &vecColors_));
 	}
+
 
 	//---------------------------------------------------
 	// RECORD
@@ -1495,21 +1498,21 @@ void CMTTracker::DrawBoxWithID(
 	}
 }
 
-std::vector<cv::Rect2d> CMTTracker::DetectHeadPoint(/*cv::Mat _curFrame,*/ KeyPointsSet& _vecCurKeyPoints)
+void CMTTracker::EstimateHead(KeyPointsSet& _vecCurKeyPoints)
 {
 	std::vector<cv::Rect2d> vecHeadBox_;
 
 	for (KeyPointsSet::iterator iter = _vecCurKeyPoints.begin(); iter != _vecCurKeyPoints.end();)
 	{
-		if ((*iter).bbox.height < stParam_.nMinBoxHeight)
+		if ((*iter).bbox.height < stParam_.nMinBoxHeight)  // box size validation
 		{
 			iter = _vecCurKeyPoints.erase((iter));
 			continue;
 		}
 
 		cv::Point2d head;
-		//Check Nose Point
-		if ((*iter).points.at(NOSE).confidence == 0 || (*iter).points.at(NOSE).confidence == 0)
+		//Check Nose Point confidence
+		if ((*iter).points.at(NOSE).confidence == 0)
 		{
 			if ((*iter).points.at(REYE).confidence == 0 && (*iter).points.at(LEYE).confidence == 0
 				&& (*iter).points.at(REAR).confidence == 0 && (*iter).points.at(LEAR).confidence == 0)
@@ -1540,299 +1543,262 @@ std::vector<cv::Rect2d> CMTTracker::DetectHeadPoint(/*cv::Mat _curFrame,*/ KeyPo
 		//Calc nose to neck point
 		double distance;
 		cv::Point2d diff, topLeft, bottomRight;
-		cv::Mat headPatch;
+		//cv::Mat headPatch;
 
 		diff = head - cv::Point2d((*iter).points.at(NECK).x, (*iter).points.at(NOSE).y);
 		distance = cv::norm(diff);
 		topLeft = cv::Point2d(head.x + distance, head.y - distance);
 		bottomRight = cv::Point2d(head.x - distance, head.y + distance);
 		
-		
-		//Save headbox vector
-		vecHeadBox_.push_back(cv::Rect2d(topLeft, bottomRight));
+		(*iter).headBox = cv::Rect2d(topLeft, bottomRight);
 
 		iter++;
 	}
-
-	return vecHeadBox_;
 }
 
 
-std::deque<CTracklet> CMTTracker::UsingHeadTracking(
-	std::vector<CKeyPoints> &_vecKeyPoints,
-	int _timeIndex)
+void CMTTracker::UpdateTrajectories(
+	KeyPointsSet _vecCurKeyPoints,                   //&붙은것 안붙은것.
+	std::deque<CTrajectory> _activeTrajectories,
+	std::deque<CTrajectory> _inactiveTrajectories)
 {
-	
+	//active Trajectories update
+	std::deque<CTrajectory> newActiveTrajectories;
+	std::deque<CTrajectory> newInactiveTrajectories;
+
+
 	//---------------------------------------------------
-	// USING HEAD TRACKING
+	// MATCHING STEP 01: active trajectories <-> keypoints
 	//---------------------------------------------------
-	std::deque<CTracklet> generatedTracklets;
 
-	for (int i = 0; i < _vecKeyPoints.size(); i++)
-	{
-		CTracklet newTracklet;
-		newTracklet.id = 0;
-		newTracklet.direction = BACKWARD;
-		newTracklet.insertKeyPoints(_vecKeyPoints[i], _timeIndex);
-
-		//Tracking using head distance
-		int timeIndex = _timeIndex - 1;
-
-		//for (int bufSize = 0; bufSize < 5; bufSize++)       //TODO: remove bufSize using parameter
-		//{
-		//	//TODO: Matching Algorithm
-
-		//	newTracklet.queueKeyPoints.push_back(_vecKeyPoints[i]);
-		//	newTracklet.timeEnd = timeIndex--;
-		//}
-
-		generatedTracklets.push_back(newTracklet);
-	}
-
-	return generatedTracklets;
-}
-
-
-TrackletPtQueue CMTTracker::UpdateHeadTracklet(
-	TrackletPtQueue _keyPointsTracklets,
-	TrackletPtQueue _activeTracklets)
-{
-	/////////////////////////////////////////////////////////////////////////////
-	// MATCHING
-	/////////////////////////////////////////////////////////////////////////////
-	
-	std::vector<bool> vecKeypointMatchedWithTracklet(_keyPointsTracklets.size(), false);
-	for (TrackletPtQueue::iterator iter = _activeTracklets.begin();
-		iter != _activeTracklets.end(); iter++)
-	{
-		if ((*iter)->length() >= stParam_.nMaxTrackletLength) { continue; }
-
-		double minDistance;
-		int minIndex;
-		for (int index = 0; index != _keyPointsTracklets.size(); index++)
-		{
-			cv::Point2d diff = cv::Point2d(
-				(*iter)->queueKeyPoints.back().headPoint.x - _keyPointsTracklets[index]->queueKeyPoints.front().headPoint.x,
-				(*iter)->queueKeyPoints.back().headPoint.y - _keyPointsTracklets[index]->queueKeyPoints.front().headPoint.y);
-			double distance = cv::norm(diff);
-
-			if (index == 0) { minDistance = distance + 1; }              // 다시 수정할 필요가 있음.
-
-			if (distance < (*iter)->currentBox().width && distance < minDistance)             //여러개에 매칭될 수 있는 문제. 
-			{
-				//TODO: Matching
-				(*iter)->timeEnd = _keyPointsTracklets[index]->timeStart;
-				(*iter)->queueKeyPoints.push_back(_keyPointsTracklets[index]->queueKeyPoints.front());
-				
-				//(*iter)->replaceKeyPoints(_keyPointsTracklets[index]->queueKeyPoints.front(), _keyPointsTracklets[index]->timeStart);
-
-				minDistance = distance;
-				vecKeypointMatchedWithTracklet[index] = true;
-			}
-		}
-	}
-	
-
-
-	/////////////////////////////////////////////////////////////////////////////
-	// TRACKLET GENERATION
-	/////////////////////////////////////////////////////////////////////////////	
-	for (int k = 0; k < _keyPointsTracklets.size(); k++)
-	{
-		if (vecKeypointMatchedWithTracklet[k]) { continue; }
-
-		CTracklet newTracklet;
-		newTracklet.id = this->nNewTrackletID_++;
-		newTracklet.timeStart = this->nCurrentFrameIdx_;
-		newTracklet.timeEnd = this->nCurrentFrameIdx_;
-		newTracklet.direction = FORWARD;
-		newTracklet.queueKeyPoints.push_back(_keyPointsTracklets[k]->queueKeyPoints.front());
-		//newTracklet.featurePointsHistory.push_back(_keyPointsTracklets[k]->featurePointsHistory.front());
-		//newTracklet.confidence = _keyPointsTracklets[k]->confidence;
-
-		// generate tracklet instance
-		this->listCTracklet_.push_back(newTracklet);
-	}
-
-
-	/////////////////////////////////////////////////////////////////////////////
-	// TRACKER TERMINATION
-	/////////////////////////////////////////////////////////////////////////////
-	TrackletPtQueue newActiveTracklets;
-	for (std::list<CTracklet>::iterator trackerIter = listCTracklet_.begin();
-		trackerIter != listCTracklet_.end();
-		/*trackerIter++*/)
-	{
-		if ((*trackerIter).timeEnd + stParam_.nMaxPendingTime < (int)nCurrentFrameIdx_)
-		{
-			// termination			
-			trackerIter = this->listCTracklet_.erase(trackerIter);
-			continue;
-		}
-		if ((*trackerIter).timeEnd == (int)nCurrentFrameIdx_ && (*trackerIter).length() <= stParam_.nMaxTrackletLength) 
-			newActiveTracklets.push_back(&(*trackerIter));
-		trackerIter++;
-	}
-	queueActiveTracklets_ = newActiveTracklets;
-
-	return queueActiveTracklets_;
-}
-
-
-void CMTTracker::HeadTrackletToTrajectory(const TrackletPtQueue &_queueActiveTracklets)
-{
-	// trajectory update
-	TrackletPtQueue newTracklets;
-	for (size_t i = 0; i < _queueActiveTracklets.size(); i++)
-	{
-		if (NULL == _queueActiveTracklets[i]->ptTrajectory)
-		{
-			newTracklets.push_back(_queueActiveTracklets[i]);
-			continue;
-		}
-		CTrajectory *curTrajectory = _queueActiveTracklets[i]->ptTrajectory;
-		curTrajectory->timeEnd = this->nCurrentFrameIdx_;
-		curTrajectory->timeLastUpdate = curTrajectory->timeEnd;
-		curTrajectory->duration = curTrajectory->timeEnd - curTrajectory->timeStart + 1;
-		curTrajectory->boxes.push_back(_queueActiveTracklets[i]->currentBox());
-	}
-
-	// delete expired trajectories and find pending trajectories
-	queueActiveTrajectories_.clear();
-	std::vector<CTrajectory*> vecPendedTrajectories;
-	vecPendedTrajectories.reserve(listCTrajectories_.size());
-	for (std::list<CTrajectory>::iterator trajIter = listCTrajectories_.begin();
-		trajIter != listCTrajectories_.end();
-		/*trajIter++*/)
-	{
-		if (trajIter->timeLastUpdate + stParam_.nMaxPendingTime < (int)this->nCurrentFrameIdx_)
-		{
-			// termination			
-			trajIter = this->listCTrajectories_.erase(trajIter);
-			continue;
-		}
-		if (trajIter->timeLastUpdate == this->nCurrentFrameIdx_)
-			queueActiveTrajectories_.push_back(&(*trajIter));
-		else
-			vecPendedTrajectories.push_back(&(*trajIter));
-
-		trajIter++;
-	}
-/*
-	//---------------------------------------------------
-	// MATCHING
-	//---------------------------------------------------
-	for (int trajIdx = 0; trajIdx < vecPendedTrajectories.size(); trajIdx++)
-	{
-		CTrajectory *curTrajectory = vecPendedTrajectories[trajIdx];
-		for (int trackletIdx = 0; trackletIdx < newTracklets.size(); trackletIdx++)
-		{
-			cv::Point2d diff = cv::Point2d(curTrajectory->latestHeadPoint() - newTracklets[trackletIdx]->curHeadPoint());
-			double distance = cv::norm(diff);
-
-			if (distance < curTrajectory->tracklets.back()->currentBox().height)             //여러개에 매칭될 수 있는 문제. 
-			{
-				newTracklets[trackletIdx]->ptTrajectory = curTrajectory;                     //validation check 해서 유효한 것 하나만 들어가게 만들어야 함.
-
-				// updata matched trajectory
-				curTrajectory->timeEnd = this->nCurrentFrameIdx_;
-				curTrajectory->timeLastUpdate = curTrajectory->timeEnd;
-				curTrajectory->duration = curTrajectory->timeEnd - curTrajectory->timeStart + 1;
-				curTrajectory->boxes.push_back(newTracklets[trackletIdx]->currentBox());
-				curTrajectory->tracklets.push_back(newTracklets[trackletIdx]);
-			}
-		}
-		queueActiveTrajectories_.push_back(curTrajectory);
-	}
-*/
-	// trajectory-to-tracklet matching
-	arrInterTrackletMatchingCost_.clear();
-	arrInterTrackletMatchingCost_.resize(
-		vecPendedTrajectories.size() * newTracklets.size(),
+	// calc cost: keypoints <-> active trajectories
+	std::vector<float> arrKeyPointToAtiveMatchingCost_(
+		_vecCurKeyPoints.size() * _activeTrajectories.size(),
 		std::numeric_limits<float>::infinity());
-	for (size_t trajIdx = 0; trajIdx < vecPendedTrajectories.size(); trajIdx++)
+	for (int trajIdx = 0; trajIdx != _activeTrajectories.size(); trajIdx++)
 	{
-		for (size_t newIdx = 0, costPos = trajIdx;
-			newIdx < newTracklets.size();
-			newIdx++, costPos += vecPendedTrajectories.size())
+		for (int pointIdx = 0, costPos = trajIdx;
+			pointIdx != _vecCurKeyPoints.size();
+			pointIdx++, costPos += _activeTrajectories.size())
 		{
 			double curCost = 0.0;
-
 			// TODO: translation + depth distance
-			double distTranslate = hj::NormL2(hj::Center(vecPendedTrajectories[trajIdx]->boxes.back()) - hj::Center(newTracklets[newIdx]->currentBox()));
-			if (distTranslate > stParam_.dMaxTranslationDistance)
+			cv::Point2d diff = cv::Point2d((_activeTrajectories[trajIdx].latestHeadPoint().x - _vecCurKeyPoints[pointIdx].headPoint.x),
+				(_activeTrajectories[trajIdx].latestHeadPoint().y - _vecCurKeyPoints[pointIdx].headPoint.y));
+			double distance = cv::norm(diff);
+			
+			if (distance > _activeTrajectories[trajIdx].boxes.back().width)
 				continue;
-			curCost += distTranslate;
+			curCost += distance;
 
-			arrInterTrackletMatchingCost_[costPos] = (float)curCost;
+			arrKeyPointToAtiveMatchingCost_[costPos] = (float)curCost;
 		}
 	}
 
 	// handling infinite in the cost array
 	float maxCost = -1000.0f;
-	for (int costIdx = 0; costIdx < arrInterTrackletMatchingCost_.size(); costIdx++)
+	for (int costIdx = 0; costIdx < arrKeyPointToAtiveMatchingCost_.size(); costIdx++)
 	{
-		if (!_finitef(arrInterTrackletMatchingCost_[costIdx]))
+		if (!_finitef(arrKeyPointToAtiveMatchingCost_[costIdx]))
 			continue;
-		if (maxCost < arrInterTrackletMatchingCost_[costIdx])
-			maxCost = arrInterTrackletMatchingCost_[costIdx];
+		if (maxCost < arrKeyPointToAtiveMatchingCost_[costIdx])
+			maxCost = arrKeyPointToAtiveMatchingCost_[costIdx];
 	}
 	maxCost = maxCost + 100.0f;
-	for (int costIdx = 0; costIdx < arrInterTrackletMatchingCost_.size(); costIdx++)
+	for (int costIdx = 0; costIdx < arrKeyPointToAtiveMatchingCost_.size(); costIdx++)
 	{
-		if (_finitef(arrInterTrackletMatchingCost_[costIdx]))
+		if (_finitef(arrKeyPointToAtiveMatchingCost_[costIdx]))
 			continue;
-		arrInterTrackletMatchingCost_[costIdx] = maxCost;
+		arrKeyPointToAtiveMatchingCost_[costIdx] = maxCost;
 	}
 
-	//---------------------------------------------------
-	// MATCHING
-	//---------------------------------------------------
+
+	// matching & validation
 	CHungarianMethod cHungarianMatcher;
-	cHungarianMatcher.Initialize(arrInterTrackletMatchingCost_, (unsigned int)newTracklets.size(), (unsigned int)vecPendedTrajectories.size());
+	cHungarianMatcher.Initialize(arrKeyPointToAtiveMatchingCost_, (unsigned int)_vecCurKeyPoints.size(), (unsigned int)_activeTrajectories.size());
 	stMatchInfo* curMatchInfo = cHungarianMatcher.Match();
+	std::vector<bool> vecKeypointMatchedWithTracklet(_vecCurKeyPoints.size(), false);
+
 	for (size_t matchIdx = 0; matchIdx < curMatchInfo->rows.size(); matchIdx++)
 	{
 		if (maxCost == curMatchInfo->matchCosts[matchIdx]) { continue; }
-		CTracklet *curTracklet = newTracklets[curMatchInfo->rows[matchIdx]];
-		CTrajectory *curTrajectory = vecPendedTrajectories[curMatchInfo->cols[matchIdx]];
 
-		curTracklet->ptTrajectory = curTrajectory;
+		CKeyPoints *curKeyPoint = &_vecCurKeyPoints[curMatchInfo->rows[matchIdx]];
+		CTrajectory *curTrajectory = &_activeTrajectories[curMatchInfo->cols[matchIdx]];
 
 		// updata matched trajectory
 		curTrajectory->timeEnd = this->nCurrentFrameIdx_;
 		curTrajectory->timeLastUpdate = curTrajectory->timeEnd;
 		curTrajectory->duration = curTrajectory->timeEnd - curTrajectory->timeStart + 1;
-		curTrajectory->boxes.push_back(curTracklet->currentBox());
-		curTrajectory->tracklets.push_back(curTracklet);
+		curTrajectory->boxes.push_back(curKeyPoint->bbox);
+		curTrajectory->headBoxes.push_back(curKeyPoint->headBox);
+		curTrajectory->headPoint.push_back(curKeyPoint->headPoint);
+		
+		newActiveTrajectories.push_back(*curTrajectory);
+		//queueActiveTrajectories_.push_back(curTrajectory);          //하나는 지우기
 
-		queueActiveTrajectories_.push_back(curTrajectory);
+		//queueActiveTrajectories_.push_back(curTrajectory);
+		vecKeypointMatchedWithTracklet[curMatchInfo->rows[matchIdx]] = true;
 	}
 	cHungarianMatcher.Finalize();
 
-	/////////////////////////////////////////////////////////////////////////////
-	// TRAJECTORY GENERATION
-	/////////////////////////////////////////////////////////////////////////////	
-	for (TrackletPtQueue::iterator trackletIter = newTracklets.begin();
-		trackletIter != newTracklets.end();
-		trackletIter++)
+	// update matched trajectories
+	for (std::deque<CTrajectory>::iterator iter = _activeTrajectories.begin();
+		iter != _activeTrajectories.end();
+		iter++)
 	{
-		if ((*trackletIter)->ptTrajectory != NULL) { continue; }
+		if ((*iter).timeLastUpdate == this->nCurrentFrameIdx_) { continue; }
 
+		newInactiveTrajectories.push_back((*iter));
+	}
+/*
+	for (int trajIdx = 0; trajIdx != _activeTrajectories.size(); trajIdx++)
+	{
+		if (_activeTrajectories[trajIdx]->timeLastUpdate == this->nCurrentFrameIdx_) { continue; }
+
+		newInactiveTrajectories.push_back(*_activeTrajectories[trajIdx]);
+	}
+*/
+
+
+	//---------------------------------------------------
+	// MATCHING STEP 02: inactive trajectories <-> keypoints
+	//---------------------------------------------------
+
+	// calc cost: keypoints <-> inactive trajectories
+	std::vector<float> arrKeyPointToInactiveMatchingCost_(
+		_vecCurKeyPoints.size() * _inactiveTrajectories.size(),
+		std::numeric_limits<float>::infinity());
+	for (int trajIdx = 0; trajIdx != _inactiveTrajectories.size(); trajIdx++)
+	{
+		for (int pointIdx = 0, costPos = trajIdx;
+			pointIdx != _vecCurKeyPoints.size();
+			pointIdx++, costPos += _inactiveTrajectories.size())
+		{
+			double curCost = 0.0;
+			// TODO: translation + depth distance
+			cv::Point2d diff = cv::Point2d((_inactiveTrajectories[trajIdx].latestHeadPoint().x - _vecCurKeyPoints[pointIdx].headPoint.x),
+				(_inactiveTrajectories[trajIdx].latestHeadPoint().y - _vecCurKeyPoints[pointIdx].headPoint.y));
+			double distance = cv::norm(diff);
+
+			if (distance > _inactiveTrajectories[trajIdx].boxes.back().width)
+				continue;
+			curCost += distance;
+
+			arrKeyPointToInactiveMatchingCost_[costPos] = (float)curCost;
+		}
+	}
+
+	// handling infinite in the cost array
+	//float maxCost = -1000.0f;
+	for (int costIdx = 0; costIdx < arrKeyPointToInactiveMatchingCost_.size(); costIdx++)
+	{
+		if (!_finitef(arrKeyPointToInactiveMatchingCost_[costIdx]))
+			continue;
+		if (maxCost < arrKeyPointToInactiveMatchingCost_[costIdx])
+			maxCost = arrKeyPointToInactiveMatchingCost_[costIdx];
+	}
+	maxCost = maxCost + 100.0f;
+	for (int costIdx = 0; costIdx < arrKeyPointToInactiveMatchingCost_.size(); costIdx++)
+	{
+		if (_finitef(arrKeyPointToInactiveMatchingCost_[costIdx]))
+			continue;
+		arrKeyPointToInactiveMatchingCost_[costIdx] = maxCost;
+	}
+
+	// matching & validation( 아래 update matched trajectories부분과 함께 수정이 필요하다)
+	CHungarianMethod cInactiveHungarianMatcher;
+	cInactiveHungarianMatcher.Initialize(arrKeyPointToInactiveMatchingCost_, (unsigned int)_vecCurKeyPoints.size(), (unsigned int)_inactiveTrajectories.size());
+	stMatchInfo* inactiveMatchInfo = cInactiveHungarianMatcher.Match();
+
+	for (size_t matchIdx = 0; matchIdx < inactiveMatchInfo->rows.size(); matchIdx++)
+	{
+		if (maxCost == inactiveMatchInfo->matchCosts[matchIdx]) { continue; }
+		
+		CKeyPoints *curKeyPoint = &_vecCurKeyPoints[inactiveMatchInfo->rows[matchIdx]];
+		CTrajectory *curTrajectory = &_inactiveTrajectories[inactiveMatchInfo->cols[matchIdx]];
+		//validation
+
+		// updata matched trajectory
+		curTrajectory->timeEnd = this->nCurrentFrameIdx_;
+		curTrajectory->timeLastUpdate = curTrajectory->timeEnd;
+		curTrajectory->duration = curTrajectory->timeEnd - curTrajectory->timeStart + 1;
+		
+		curTrajectory->boxes.push_back(curKeyPoint->bbox);
+		curTrajectory->headBoxes.push_back(curKeyPoint->headBox);
+		curTrajectory->headPoint.push_back(curKeyPoint->headPoint);
+
+		newActiveTrajectories.push_back(*curTrajectory);
+		//queueActiveTrajectories_.push_back(curTrajectory);          //하나는 지우기
+		//queueActiveTrajectories_.push_back(curTrajectory);
+		vecKeypointMatchedWithTracklet[inactiveMatchInfo->rows[matchIdx]] = true;
+	}
+	cInactiveHungarianMatcher.Finalize();
+
+	// update matched trajectories
+	for (std::deque<CTrajectory>::iterator iter = _inactiveTrajectories.begin();
+		iter != _inactiveTrajectories.end();
+		iter++)
+	{
+		if ((*iter).timeLastUpdate == this->nCurrentFrameIdx_) { continue; }
+
+		newInactiveTrajectories.push_back((*iter));
+	}
+
+
+	//---------------------------------------------------
+	// TRAJECTORY GENERATION
+	//---------------------------------------------------	
+	for (int pointIdx = 0; pointIdx != _vecCurKeyPoints.size(); pointIdx++)
+	{
+		if (vecKeypointMatchedWithTracklet[pointIdx]) { continue; }
+		// generate new trajectories
+		// insert to the list
+		// get the pointer of just interted trajectory and put that in the active trajectory queue
 		CTrajectory newTrajectory;
 		newTrajectory.id = this->nNewTrajectoryID_++;
 		newTrajectory.timeStart = this->nCurrentFrameIdx_;
 		newTrajectory.timeEnd = this->nCurrentFrameIdx_;
 		newTrajectory.timeLastUpdate = this->nCurrentFrameIdx_;
 		newTrajectory.duration = 1;
-		newTrajectory.boxes.push_back((*trackletIter)->currentBox());
-		newTrajectory.tracklets.push_back(*trackletIter);
+		newTrajectory.boxes.push_back(_vecCurKeyPoints[pointIdx].bbox);
+		newTrajectory.headBoxes.push_back(_vecCurKeyPoints[pointIdx].headBox);
+		newTrajectory.headPoint.push_back(_vecCurKeyPoints[pointIdx].headPoint);
 
 		// generate trajectory instance
 		this->listCTrajectories_.push_back(newTrajectory);
-		(*trackletIter)->ptTrajectory = &this->listCTrajectories_.back();
-		queueActiveTrajectories_.push_back(&this->listCTrajectories_.back());
+		newActiveTrajectories.push_back(this->listCTrajectories_.back());
+		
+		//queueActiveTrajectories_.push_back(&newTrajectory);       //하나는 지우기
 	}
+
+	//---------------------------------------------------
+	// TRAJECTORY TERMINATION
+	//---------------------------------------------------
+	//terminate trajectories (refresh inactivated trajectory queue)
+	//
+	//std::deque <CTrajectory*> newInactiveTrajectories;
+
+	//for (std::deque<CTrajectory>::iterator trajIter = _inactiveTrajectories.begin(); trajIter != _inactiveTrajectories.end();)
+	//{
+	//	//matching & validation
+
+	//	//newAtiveTrajectories에 저장.		
+	//}
+
+	for (std::deque<CTrajectory>::iterator trajIter = newInactiveTrajectories.begin(); trajIter != newInactiveTrajectories.end();)
+	{
+		if ((*trajIter).timeLastUpdate + stParam_.nMaxPendingTime < (int)this->nCurrentFrameIdx_)
+		{
+			trajIter = newInactiveTrajectories.erase(trajIter);
+			continue;
+		}
+		trajIter++;
+	}
+
+	activeTrajectories_ = newActiveTrajectories;
+	inactiveTrajectories_ = newInactiveTrajectories;
+
 }
 
 }
