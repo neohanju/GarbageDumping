@@ -80,11 +80,11 @@
 #include "opencv2/highgui/highgui.hpp"
 #include "MTTracker.h"
 
-#define KEYPOINTS_BASE_PATH ("C:\\Users\\JM\\Desktop\\pose")
+#define KEYPOINTS_BASE_PATH ("D:\\etri_data\\pose_text")
 #define VIDEO_BASE_PATH ("D:\\etri_data\\numbering\\numbering")
 #define RESULT_PATH ("D:\\etri_data\\GarbageDumpingResult")
 
-#define TARGET_VIDEO ("003")
+#define TARGET_VIDEO ("055")
 #define START_FRAME_INDEX (0)
 #define END_FRAME_INDEX (-1)
 

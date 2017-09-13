@@ -46,8 +46,9 @@ struct stParamTrack
 		, dMinOpticalFlowMajorityRatio(0.5)
 		, dMaxTranslationDistance(30.0)
 		, dMaxDepthDistance(30.0)
-		, nMaxPendingTime(10)
+		, nMaxPendingTime(15)
 		, nMinBoxHeight(100)
+		, nMinBoxWidth(20)
 		, bVisualize(false)
 		, bVideoRecord(false)
 		, strVideoRecordPath("")
@@ -84,6 +85,7 @@ struct stParamTrack
 	double dMaxDepthDistance;
 	int    nMaxPendingTime;
 	int    nMinBoxHeight;
+	int    nMinBoxWidth;
 
 	/* visualization for debugging */
 	bool bVisualize;

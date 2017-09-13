@@ -1504,7 +1504,8 @@ void CMTTracker::EstimateHead(KeyPointsSet& _vecCurKeyPoints)
 
 	for (KeyPointsSet::iterator iter = _vecCurKeyPoints.begin(); iter != _vecCurKeyPoints.end();)
 	{
-		if ((*iter).bbox.height < stParam_.nMinBoxHeight)  // box size validation
+		if ((*iter).bbox.height < stParam_.nMinBoxHeight 
+			|| (*iter).bbox.width < stParam_.nMinBoxWidth)  // box size validation
 		{
 			iter = _vecCurKeyPoints.erase((iter));
 			continue;
@@ -1522,7 +1523,7 @@ void CMTTracker::EstimateHead(KeyPointsSet& _vecCurKeyPoints)
 			}
 
 			int num = 0;
-			for (int k = REYE; k != LEAR; k++)
+			for (int k = REYE; k <= LEAR; k++)
 			{
 				if ((*iter).points.at(k).confidence == 0) { continue; }
 				head.x = (*iter).points.at(k).x;
@@ -1582,12 +1583,14 @@ void CMTTracker::UpdateTrajectories(
 			pointIdx++, costPos += _activeTrajectories.size())
 		{
 			double curCost = 0.0;
+
 			// TODO: translation + depth distance
 			cv::Point2d diff = cv::Point2d((_activeTrajectories[trajIdx].latestHeadPoint().x - _vecCurKeyPoints[pointIdx].headPoint.x),
 				(_activeTrajectories[trajIdx].latestHeadPoint().y - _vecCurKeyPoints[pointIdx].headPoint.y));
 			double distance = cv::norm(diff);
 			
-			if (distance > _activeTrajectories[trajIdx].boxes.back().width)
+
+			if (distance > _activeTrajectories[trajIdx].boxes.back().height)               //width height 말고 고민해서 바꿔야 할듯. (앞사람 뒷사람의 보정도 생각해야한다.)
 				continue;
 			curCost += distance;
 
@@ -1680,8 +1683,9 @@ void CMTTracker::UpdateTrajectories(
 			cv::Point2d diff = cv::Point2d((_inactiveTrajectories[trajIdx].latestHeadPoint().x - _vecCurKeyPoints[pointIdx].headPoint.x),
 				(_inactiveTrajectories[trajIdx].latestHeadPoint().y - _vecCurKeyPoints[pointIdx].headPoint.y));
 			double distance = cv::norm(diff);
+			
 
-			if (distance > _inactiveTrajectories[trajIdx].boxes.back().width)
+			if (distance > _inactiveTrajectories[trajIdx].boxes.back().height)           //width height 말고 고민해서 바꿔야 할듯. (앞사람 뒷사람의 보정도 생각해야한다.)
 				continue;
 			curCost += distance;
 
@@ -1690,7 +1694,7 @@ void CMTTracker::UpdateTrajectories(
 	}
 
 	// handling infinite in the cost array
-	//float maxCost = -1000.0f;
+	maxCost = -1000.0f;
 	for (int costIdx = 0; costIdx < arrKeyPointToInactiveMatchingCost_.size(); costIdx++)
 	{
 		if (!_finitef(arrKeyPointToInactiveMatchingCost_[costIdx]))
