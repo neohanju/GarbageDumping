@@ -1526,8 +1526,8 @@ void CMTTracker::EstimateHead(KeyPointsSet& _vecCurKeyPoints)
 			for (int k = REYE; k <= LEAR; k++)
 			{
 				if ((*iter).points.at(k).confidence == 0) { continue; }
-				head.x = (*iter).points.at(k).x;
-				head.y = (*iter).points.at(k).y;
+				head.x += (*iter).points.at(k).x;
+				head.y += (*iter).points.at(k).y;
 				num++;
 			}
 			head.x /= num; 
