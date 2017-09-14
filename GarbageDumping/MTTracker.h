@@ -46,7 +46,7 @@ struct stParamTrack
 		, dMinOpticalFlowMajorityRatio(0.5)
 		, dMaxTranslationDistance(30.0)
 		, dMaxDepthDistance(30.0)
-		, nMaxPendingTime(15)
+		, nMaxPendingTime(100)
 		, nMinBoxHeight(100)
 		, nMinBoxWidth(20)
 		, bVisualize(false)
@@ -253,6 +253,8 @@ public:
 enum KeypointBaseIdx{
 	NOSE = 0,
 	NECK,
+	//RSHOULDER = 2,
+	//LSHOULDER = 5,
 	REYE = 14,
 	LEYE,
 	REAR,

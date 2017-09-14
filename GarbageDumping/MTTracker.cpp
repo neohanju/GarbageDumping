@@ -1399,6 +1399,12 @@ void CMTTracker::VisualizeResult()
 			0,
 			0,
 			getColorByID(activeTrajectories_[trajIdx].id, &vecColors_));
+
+		cv::rectangle(
+			matTrackingResult_,
+			activeTrajectories_[trajIdx].headBoxes.back(),
+			cv::Scalar(0, 0, 255), 1);
+
 	}
 
 
@@ -1507,12 +1513,12 @@ void CMTTracker::EstimateHead(KeyPointsSet& _vecCurKeyPoints)
 		if ((*iter).bbox.height < stParam_.nMinBoxHeight 
 			|| (*iter).bbox.width < stParam_.nMinBoxWidth)  // box size validation
 		{
-			iter = _vecCurKeyPoints.erase((iter));
+			iter = _vecCurKeyPoints.erase(iter);
 			continue;
 		}
 
 		cv::Point2d head;
-		//Check Nose Point confidence
+		/*Estimate Head Point*/
 		if ((*iter).points.at(NOSE).confidence == 0)
 		{
 			if ((*iter).points.at(REYE).confidence == 0 && (*iter).points.at(LEYE).confidence == 0
@@ -1540,17 +1546,51 @@ void CMTTracker::EstimateHead(KeyPointsSet& _vecCurKeyPoints)
 			head = cv::Point2d((*iter).points.at(NOSE).x, (*iter).points.at(NOSE).y);
 			(*iter).headPoint = head;
 		}
-
+		
+		/* Head Box Estimate */
 		//Calc nose to neck point
-		double distance;
+		double distance = 0;
+		int idx = 0;
 		cv::Point2d diff, topLeft, bottomRight;
-		//cv::Mat headPatch;
 
-		diff = head - cv::Point2d((*iter).points.at(NECK).x, (*iter).points.at(NOSE).y);
+		if ((*iter).points.at(NECK).confidence == 0)
+		{
+			iter = _vecCurKeyPoints.erase(iter);
+			continue;
+		}
+
+		diff = head - cv::Point2d((*iter).points.at(NECK).x, (*iter).points.at(NECK).y);
 		distance = cv::norm(diff);
+		//double max_distance = 20;                                                    // 이렇게 patch에 min 혹은 max size를 정해주는것이 맞는가?
+		double min_distance = 15;
+		distance = distance < min_distance ? min_distance : distance;
+
+/*
+		if ((*iter).points.at(NOSE).confidence == 0)
+		{
+			diff = head - cv::Point2d((*iter).points.at(NECK).x, (*iter).points.at(NECK).y);
+			distance += cv::norm(diff);
+			idx++;
+		}
+		
+		if ((*iter).points.at(REAR).confidence != 0 && (*iter).points.at(LEAR).confidence != 0)
+		{
+			diff = cv::Point2d((*iter).points.at(REAR).x, (*iter).points.at(REAR).y) -
+				cv::Point2d((*iter).points.at(LEAR).x, (*iter).points.at(LEAR).y);
+			distance += cv::norm(diff) / 2;
+			idx++;
+		}
+
+		if (idx == 0)
+		{
+			iter = _vecCurKeyPoints.erase(iter);
+			continue;
+		}
+		distance /= idx;
+*/
 		topLeft = cv::Point2d(head.x + distance, head.y - distance);
 		bottomRight = cv::Point2d(head.x - distance, head.y + distance);
-		
+	
 		(*iter).headBox = cv::Rect2d(topLeft, bottomRight);
 
 		iter++;
@@ -1559,7 +1599,7 @@ void CMTTracker::EstimateHead(KeyPointsSet& _vecCurKeyPoints)
 
 
 void CMTTracker::UpdateTrajectories(
-	KeyPointsSet _vecCurKeyPoints,                   //&붙은것 안붙은것.
+	KeyPointsSet _vecCurKeyPoints,                   
 	std::deque<CTrajectory> _activeTrajectories,
 	std::deque<CTrajectory> _inactiveTrajectories)
 {
@@ -1590,7 +1630,10 @@ void CMTTracker::UpdateTrajectories(
 			double distance = cv::norm(diff);
 			
 
-			if (distance > _activeTrajectories[trajIdx].boxes.back().height)               //width height 말고 고민해서 바꿔야 할듯. (앞사람 뒷사람의 보정도 생각해야한다.)
+			if (distance > _activeTrajectories[trajIdx].boxes.back().height)   //width height 말고 고민해서 바꿔야 할듯. (앞사람 뒷사람의 보정도 생각해야한다.)            
+				continue;
+
+			if (!hj::CheckOverlap(_activeTrajectories[trajIdx].headBoxes.back(), _vecCurKeyPoints[pointIdx].headBox))  //overlap안되면 연결 끊기.
 				continue;
 			curCost += distance;
 
@@ -1638,9 +1681,7 @@ void CMTTracker::UpdateTrajectories(
 		curTrajectory->headPoint.push_back(curKeyPoint->headPoint);
 		
 		newActiveTrajectories.push_back(*curTrajectory);
-		//queueActiveTrajectories_.push_back(curTrajectory);          //하나는 지우기
 
-		//queueActiveTrajectories_.push_back(curTrajectory);
 		vecKeypointMatchedWithTracklet[curMatchInfo->rows[matchIdx]] = true;
 	}
 	cHungarianMatcher.Finalize();
@@ -1654,15 +1695,6 @@ void CMTTracker::UpdateTrajectories(
 
 		newInactiveTrajectories.push_back((*iter));
 	}
-/*
-	for (int trajIdx = 0; trajIdx != _activeTrajectories.size(); trajIdx++)
-	{
-		if (_activeTrajectories[trajIdx]->timeLastUpdate == this->nCurrentFrameIdx_) { continue; }
-
-		newInactiveTrajectories.push_back(*_activeTrajectories[trajIdx]);
-	}
-*/
-
 
 	//---------------------------------------------------
 	// MATCHING STEP 02: inactive trajectories <-> keypoints
@@ -1685,7 +1717,9 @@ void CMTTracker::UpdateTrajectories(
 			double distance = cv::norm(diff);
 			
 
-			if (distance > _inactiveTrajectories[trajIdx].boxes.back().height)           //width height 말고 고민해서 바꿔야 할듯. (앞사람 뒷사람의 보정도 생각해야한다.)
+			if (distance > _inactiveTrajectories[trajIdx].boxes.back().height)        //width height 말고 고민해서 바꿔야 할듯. (앞사람 뒷사람의 보정도 생각해야한다.)
+				continue;
+			if (!hj::CheckOverlap(_inactiveTrajectories[trajIdx].headBoxes.back(), _vecCurKeyPoints[pointIdx].headBox)) //overlap안되면 연결 끊기
 				continue;
 			curCost += distance;
 
@@ -1734,8 +1768,6 @@ void CMTTracker::UpdateTrajectories(
 		curTrajectory->headPoint.push_back(curKeyPoint->headPoint);
 
 		newActiveTrajectories.push_back(*curTrajectory);
-		//queueActiveTrajectories_.push_back(curTrajectory);          //하나는 지우기
-		//queueActiveTrajectories_.push_back(curTrajectory);
 		vecKeypointMatchedWithTracklet[inactiveMatchInfo->rows[matchIdx]] = true;
 	}
 	cInactiveHungarianMatcher.Finalize();
@@ -1772,9 +1804,7 @@ void CMTTracker::UpdateTrajectories(
 
 		// generate trajectory instance
 		this->listCTrajectories_.push_back(newTrajectory);
-		newActiveTrajectories.push_back(this->listCTrajectories_.back());
-		
-		//queueActiveTrajectories_.push_back(&newTrajectory);       //하나는 지우기
+		newActiveTrajectories.push_back(this->listCTrajectories_.back());	
 	}
 
 	//---------------------------------------------------
