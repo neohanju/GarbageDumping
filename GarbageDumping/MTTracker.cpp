@@ -231,9 +231,9 @@ CTrackResult CMTTracker::Track(
 	
 	UpdateTrajectories(vecKeypoints_, activeTrajectories_, inactiveTrajectories_);
 
-	///* result packaging */
-	//ResultPackaging();	
-	//trackingResult_.procTime = clock() - timeStartTrack;
+	/* result packaging */
+	ResultPackaging();	
+	trackingResult_.procTime = clock() - timeStartTrack;
 
 	/* visualize */
 	if (bVisualizeResult_) { VisualizeResult(); }
@@ -841,12 +841,17 @@ void CMTTracker::ResultPackaging()
 	time_t timePackaging = clock();	
 	trackingResult_.frameIdx  = nCurrentFrameIdx_;
 	trackingResult_.timeStamp = (unsigned int)timePackaging;
-	trackingResult_.objectInfos.clear();	
+	trackingResult_.objectInfos.clear();
+	for (size_t tIdx = 0; tIdx < activeTrajectories_.size(); tIdx++)
+	{
+		trackingResult_.objectInfos.push_back(GetObjectInfo(activeTrajectories_[tIdx]));
+	}
+/*
 	for (size_t tIdx = 0; tIdx < queueActiveTrajectories_.size(); tIdx++)
 	{
 		trackingResult_.objectInfos.push_back(GetObjectInfo(queueActiveTrajectories_[tIdx]));
 	}
-
+*/
 	int cost_pos = 0;
 	if (!this->trackingResult_.matMatchingCost.empty()) { trackingResult_.matMatchingCost.release(); }
 	trackingResult_.matMatchingCost = 
@@ -1299,9 +1304,10 @@ CObjectInfo CMTTracker::GetObjectInfo(CTrajectory *_curTrajectory)
 	CObjectInfo outObjectInfo;
 	assert(_curTrajectory->timeEnd == nCurrentFrameIdx_);
 
-	cv::Rect curBox = hj::Rescale(_curTrajectory->boxes.back(), stParam_.dImageRescaleRecover);
+	//cv::Rect curBox = hj::Rescale(_curTrajectory->boxes.back(), stParam_.dImageRescaleRecover);
 	outObjectInfo.id = _curTrajectory->id;
-	outObjectInfo.box = curBox;
+	outObjectInfo.box = _curTrajectory->boxes.back();
+	outObjectInfo.headBox = _curTrajectory->headBoxes.back();
 	
 	return outObjectInfo;
 }
@@ -1390,19 +1396,21 @@ void CMTTracker::VisualizeResult()
 	//activateTRajectories based visualize
 	for (int trajIdx = 0; trajIdx < activeTrajectories_.size(); trajIdx++)
 	{
-		if (activeTrajectories_[trajIdx].timeEnd != this->nCurrentFrameIdx_) { continue; }
+		CTrajectory *curTrajectory = activeTrajectories_[trajIdx];
+
+		if (curTrajectory->timeEnd != this->nCurrentFrameIdx_) { continue; }
 		
 		DrawBoxWithID(
 			matTrackingResult_,
-			hj::Rescale(activeTrajectories_[trajIdx].boxes.back(), stParam_.dImageRescaleRecover),
-			activeTrajectories_[trajIdx].id,
+			hj::Rescale(curTrajectory->boxes.back(), stParam_.dImageRescaleRecover),
+			curTrajectory->id,
 			0,
 			0,
-			getColorByID(activeTrajectories_[trajIdx].id, &vecColors_));
+			getColorByID(curTrajectory->id, &vecColors_));
 
 		cv::rectangle(
 			matTrackingResult_,
-			activeTrajectories_[trajIdx].headBoxes.back(),
+			curTrajectory->headBoxes.back(),
 			cv::Scalar(0, 0, 255), 1);
 
 	}
@@ -1600,12 +1608,12 @@ void CMTTracker::EstimateHead(KeyPointsSet& _vecCurKeyPoints)
 
 void CMTTracker::UpdateTrajectories(
 	KeyPointsSet _vecCurKeyPoints,                   
-	std::deque<CTrajectory> _activeTrajectories,
-	std::deque<CTrajectory> _inactiveTrajectories)
+	std::deque<CTrajectory*> _activeTrajectories,
+	std::deque<CTrajectory*> _inactiveTrajectories)
 {
 	//active Trajectories update
-	std::deque<CTrajectory> newActiveTrajectories;
-	std::deque<CTrajectory> newInactiveTrajectories;
+	std::deque<CTrajectory*> newActiveTrajectories;
+	std::deque<CTrajectory*> newInactiveTrajectories;
 
 
 	//---------------------------------------------------
@@ -1625,15 +1633,15 @@ void CMTTracker::UpdateTrajectories(
 			double curCost = 0.0;
 
 			// TODO: translation + depth distance
-			cv::Point2d diff = cv::Point2d((_activeTrajectories[trajIdx].latestHeadPoint().x - _vecCurKeyPoints[pointIdx].headPoint.x),
-				(_activeTrajectories[trajIdx].latestHeadPoint().y - _vecCurKeyPoints[pointIdx].headPoint.y));
+			cv::Point2d diff = cv::Point2d((_activeTrajectories[trajIdx]->latestHeadPoint().x - _vecCurKeyPoints[pointIdx].headPoint.x),
+				(_activeTrajectories[trajIdx]->latestHeadPoint().y - _vecCurKeyPoints[pointIdx].headPoint.y));
 			double distance = cv::norm(diff);
 			
 
-			if (distance > _activeTrajectories[trajIdx].boxes.back().height)   //width height 말고 고민해서 바꿔야 할듯. (앞사람 뒷사람의 보정도 생각해야한다.)            
+			if (distance > _activeTrajectories[trajIdx]->boxes.back().height)   //width height 말고 고민해서 바꿔야 할듯. (앞사람 뒷사람의 보정도 생각해야한다.)            
 				continue;
 
-			if (!hj::CheckOverlap(_activeTrajectories[trajIdx].headBoxes.back(), _vecCurKeyPoints[pointIdx].headBox))  //overlap안되면 연결 끊기.
+			if (!hj::CheckOverlap(_activeTrajectories[trajIdx]->headBoxes.back(), _vecCurKeyPoints[pointIdx].headBox))  //overlap안되면 연결 끊기.
 				continue;
 			curCost += distance;
 
@@ -1670,7 +1678,7 @@ void CMTTracker::UpdateTrajectories(
 		if (maxCost == curMatchInfo->matchCosts[matchIdx]) { continue; }
 
 		CKeyPoints *curKeyPoint = &_vecCurKeyPoints[curMatchInfo->rows[matchIdx]];
-		CTrajectory *curTrajectory = &_activeTrajectories[curMatchInfo->cols[matchIdx]];
+		CTrajectory *curTrajectory = _activeTrajectories[curMatchInfo->cols[matchIdx]];
 
 		// updata matched trajectory
 		curTrajectory->timeEnd = this->nCurrentFrameIdx_;
@@ -1680,18 +1688,18 @@ void CMTTracker::UpdateTrajectories(
 		curTrajectory->headBoxes.push_back(curKeyPoint->headBox);
 		curTrajectory->headPoint.push_back(curKeyPoint->headPoint);
 		
-		newActiveTrajectories.push_back(*curTrajectory);
+		newActiveTrajectories.push_back(curTrajectory);
 
 		vecKeypointMatchedWithTracklet[curMatchInfo->rows[matchIdx]] = true;
 	}
 	cHungarianMatcher.Finalize();
 
 	// update matched trajectories
-	for (std::deque<CTrajectory>::iterator iter = _activeTrajectories.begin();
+	for (std::deque<CTrajectory*>::iterator iter = _activeTrajectories.begin();
 		iter != _activeTrajectories.end();
 		iter++)
 	{
-		if ((*iter).timeLastUpdate == this->nCurrentFrameIdx_) { continue; }
+		if ((*iter)->timeLastUpdate == this->nCurrentFrameIdx_) { continue; }
 
 		newInactiveTrajectories.push_back((*iter));
 	}
@@ -1712,14 +1720,14 @@ void CMTTracker::UpdateTrajectories(
 		{
 			double curCost = 0.0;
 			// TODO: translation + depth distance
-			cv::Point2d diff = cv::Point2d((_inactiveTrajectories[trajIdx].latestHeadPoint().x - _vecCurKeyPoints[pointIdx].headPoint.x),
-				(_inactiveTrajectories[trajIdx].latestHeadPoint().y - _vecCurKeyPoints[pointIdx].headPoint.y));
+			cv::Point2d diff = cv::Point2d((_inactiveTrajectories[trajIdx]->latestHeadPoint().x - _vecCurKeyPoints[pointIdx].headPoint.x),
+				(_inactiveTrajectories[trajIdx]->latestHeadPoint().y - _vecCurKeyPoints[pointIdx].headPoint.y));
 			double distance = cv::norm(diff);
 			
 
-			if (distance > _inactiveTrajectories[trajIdx].boxes.back().height)        //width height 말고 고민해서 바꿔야 할듯. (앞사람 뒷사람의 보정도 생각해야한다.)
+			if (distance > _inactiveTrajectories[trajIdx]->boxes.back().height)        //width height 말고 고민해서 바꿔야 할듯. (앞사람 뒷사람의 보정도 생각해야한다.)
 				continue;
-			if (!hj::CheckOverlap(_inactiveTrajectories[trajIdx].headBoxes.back(), _vecCurKeyPoints[pointIdx].headBox)) //overlap안되면 연결 끊기
+			if (!hj::CheckOverlap(_inactiveTrajectories[trajIdx]->headBoxes.back(), _vecCurKeyPoints[pointIdx].headBox)) //overlap안되면 연결 끊기
 				continue;
 			curCost += distance;
 
@@ -1755,7 +1763,7 @@ void CMTTracker::UpdateTrajectories(
 		if (maxCost == inactiveMatchInfo->matchCosts[matchIdx]) { continue; }
 		
 		CKeyPoints *curKeyPoint = &_vecCurKeyPoints[inactiveMatchInfo->rows[matchIdx]];
-		CTrajectory *curTrajectory = &_inactiveTrajectories[inactiveMatchInfo->cols[matchIdx]];
+		CTrajectory *curTrajectory = _inactiveTrajectories[inactiveMatchInfo->cols[matchIdx]];
 		//validation
 
 		// updata matched trajectory
@@ -1767,17 +1775,17 @@ void CMTTracker::UpdateTrajectories(
 		curTrajectory->headBoxes.push_back(curKeyPoint->headBox);
 		curTrajectory->headPoint.push_back(curKeyPoint->headPoint);
 
-		newActiveTrajectories.push_back(*curTrajectory);
+		newActiveTrajectories.push_back(curTrajectory);
 		vecKeypointMatchedWithTracklet[inactiveMatchInfo->rows[matchIdx]] = true;
 	}
 	cInactiveHungarianMatcher.Finalize();
 
 	// update matched trajectories
-	for (std::deque<CTrajectory>::iterator iter = _inactiveTrajectories.begin();
+	for (std::deque<CTrajectory*>::iterator iter = _inactiveTrajectories.begin();
 		iter != _inactiveTrajectories.end();
 		iter++)
 	{
-		if ((*iter).timeLastUpdate == this->nCurrentFrameIdx_) { continue; }
+		if ((*iter)->timeLastUpdate == this->nCurrentFrameIdx_) { continue; }
 
 		newInactiveTrajectories.push_back((*iter));
 	}
@@ -1804,7 +1812,7 @@ void CMTTracker::UpdateTrajectories(
 
 		// generate trajectory instance
 		this->listCTrajectories_.push_back(newTrajectory);
-		newActiveTrajectories.push_back(this->listCTrajectories_.back());	
+		newActiveTrajectories.push_back(&this->listCTrajectories_.back());
 	}
 
 	//---------------------------------------------------
@@ -1821,9 +1829,9 @@ void CMTTracker::UpdateTrajectories(
 	//	//newAtiveTrajectories에 저장.		
 	//}
 
-	for (std::deque<CTrajectory>::iterator trajIter = newInactiveTrajectories.begin(); trajIter != newInactiveTrajectories.end();)
+	for (std::deque<CTrajectory*>::iterator trajIter = newInactiveTrajectories.begin(); trajIter != newInactiveTrajectories.end();)
 	{
-		if ((*trajIter).timeLastUpdate + stParam_.nMaxPendingTime < (int)this->nCurrentFrameIdx_)
+		if ((*trajIter)->timeLastUpdate + stParam_.nMaxPendingTime < (int)this->nCurrentFrameIdx_)
 		{
 			trajIter = newInactiveTrajectories.erase(trajIter);
 			continue;

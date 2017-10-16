@@ -84,7 +84,7 @@
 #define VIDEO_BASE_PATH ("D:\\etri_data\\numbering\\numbering")
 #define RESULT_PATH ("D:\\etri_data\\GarbageDumpingResult")
 
-#define TARGET_VIDEO ("055")
+#define TARGET_VIDEO ("182")
 #define START_FRAME_INDEX (0)
 #define END_FRAME_INDEX (-1)
 

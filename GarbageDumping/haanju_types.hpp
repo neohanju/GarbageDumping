@@ -103,6 +103,7 @@ public:
 public:
 	unsigned int id;
 	cv::Rect2d   box;
+	cv::Rect2d   headBox;
 };
 //
 //

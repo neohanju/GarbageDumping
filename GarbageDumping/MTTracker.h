@@ -173,8 +173,8 @@ private:
 	void EstimateHead(KeyPointsSet& _vecCurKeyPoints);
 	void UpdateTrajectories(
 		const KeyPointsSet _vecCurKeyPoints,
-		std::deque<CTrajectory> _activeTrajectories,
-		std::deque<CTrajectory> _inactiveTrajectories);
+		std::deque<CTrajectory*> _activeTrajectories,
+		std::deque<CTrajectory*> _inactiveTrajectories);
 
 	/* VISUALIZATION */
 	void VisualizeResult();
@@ -214,8 +214,8 @@ public:
 	std::list<CTrajectory>   listCTrajectories_;
 	std::deque<CTrajectory*> queueActiveTrajectories_;
 	//head Track related
-	std::deque<CTrajectory> activeTrajectories_;
-	std::deque<CTrajectory> inactiveTrajectories_;
+	std::deque<CTrajectory*> activeTrajectories_;
+	std::deque<CTrajectory*> inactiveTrajectories_;
 
 	/* matching related */
 	std::vector<float> arrKeyPointToTrackletMatchingCost_;
