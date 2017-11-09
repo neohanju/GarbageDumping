@@ -1687,6 +1687,7 @@ void CMTTracker::UpdateTrajectories(
 		curTrajectory->boxes.push_back(curKeyPoint->bbox);
 		curTrajectory->headBoxes.push_back(curKeyPoint->headBox);
 		curTrajectory->headPoint.push_back(curKeyPoint->headPoint);
+		curTrajectory->keyPoints.push_back(curKeyPoint->points);
 		
 		newActiveTrajectories.push_back(curTrajectory);
 
@@ -1774,6 +1775,7 @@ void CMTTracker::UpdateTrajectories(
 		curTrajectory->boxes.push_back(curKeyPoint->bbox);
 		curTrajectory->headBoxes.push_back(curKeyPoint->headBox);
 		curTrajectory->headPoint.push_back(curKeyPoint->headPoint);
+		curTrajectory->keyPoints.push_back(curKeyPoint->points);
 
 		newActiveTrajectories.push_back(curTrajectory);
 		vecKeypointMatchedWithTracklet[inactiveMatchInfo->rows[matchIdx]] = true;
@@ -1809,6 +1811,7 @@ void CMTTracker::UpdateTrajectories(
 		newTrajectory.boxes.push_back(_vecCurKeyPoints[pointIdx].bbox);
 		newTrajectory.headBoxes.push_back(_vecCurKeyPoints[pointIdx].headBox);
 		newTrajectory.headPoint.push_back(_vecCurKeyPoints[pointIdx].headPoint);
+		newTrajectory.keyPoints.push_back(_vecCurKeyPoints[pointIdx].points);
 
 		// generate trajectory instance
 		this->listCTrajectories_.push_back(newTrajectory);
@@ -1819,16 +1822,6 @@ void CMTTracker::UpdateTrajectories(
 	// TRAJECTORY TERMINATION
 	//---------------------------------------------------
 	//terminate trajectories (refresh inactivated trajectory queue)
-	//
-	//std::deque <CTrajectory*> newInactiveTrajectories;
-
-	//for (std::deque<CTrajectory>::iterator trajIter = _inactiveTrajectories.begin(); trajIter != _inactiveTrajectories.end();)
-	//{
-	//	//matching & validation
-
-	//	//newAtiveTrajectoriesø° ¿˙¿Â.		
-	//}
-
 	for (std::deque<CTrajectory*>::iterator trajIter = newInactiveTrajectories.begin(); trajIter != newInactiveTrajectories.end();)
 	{
 		if ((*trajIter)->timeLastUpdate + stParam_.nMaxPendingTime < (int)this->nCurrentFrameIdx_)

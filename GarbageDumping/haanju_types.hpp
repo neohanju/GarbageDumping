@@ -195,6 +195,8 @@ public:
 	std::deque<cv::Rect2d> headBoxes; //jm
 	std::deque<cv::Point2d> headPoint;      //jm
 	TrackletPtQueue tracklets;
+	std::deque<std::vector<stKeyPoint>> keyPoints;  //jm (original: Tracklet)
+
 };
 typedef std::deque<CTrajectory> TrajectoryVector;
 
