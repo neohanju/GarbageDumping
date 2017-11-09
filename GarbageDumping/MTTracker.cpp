@@ -1308,6 +1308,7 @@ CObjectInfo CMTTracker::GetObjectInfo(CTrajectory *_curTrajectory)
 	outObjectInfo.id = _curTrajectory->id;
 	outObjectInfo.box = _curTrajectory->boxes.back();
 	outObjectInfo.headBox = _curTrajectory->headBoxes.back();
+	outObjectInfo.keyPoint = _curTrajectory->keyPoints.back();
 	
 	return outObjectInfo;
 }
