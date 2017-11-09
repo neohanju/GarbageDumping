@@ -253,13 +253,26 @@ public:
 enum KeypointBaseIdx{
 	NOSE = 0,
 	NECK,
-	//RSHOULDER = 2,
-	//LSHOULDER = 5,
-	REYE = 14,
+	RSHOULDER,
+	RELBOW,
+	RWRIST,
+	LSHOULDER,
+	LELBOW,
+	LWRIST,
+	RHIP,
+	RKNEE,
+	RANKLE,
+	LHIP,
+	LKNEE,
+	LANKLE,
+	REYE,
 	LEYE,
 	REAR,
-	LEAR
+	LEAR,
+	BKG
 };
+
+
 
 }
 

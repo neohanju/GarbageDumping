@@ -136,6 +136,14 @@ int main(int argc, char** argv)
 
 		// Track targets between consecutive frames
 		trackResult = cTracker.Track(curKeyPoints, matCurFrame, fIdx);
+		/*
+		for (std::vector<hj::CObjectInfo>::iterator objectInfoIter = trackResult.objectInfos.begin();
+			objectInfoIter != trackResult.objectInfos.end();
+			objectInfoIter++)
+		{
+			printf("%f", &objectInfoIter->keyPoint[0]);
+		}
+		*/
 	}
 
 	return 0;
