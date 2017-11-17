@@ -148,6 +148,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="ActionClassifier.cpp" />
     <ClCompile Include="haanju_types.cpp" />
     <ClCompile Include="haanju_utils.cpp" />
     <ClCompile Include="HungarianMethod.cpp" />
@@ -155,6 +156,7 @@
     <ClCompile Include="MTTracker.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ActionClassifier.h" />
     <ClInclude Include="haanju_types.hpp" />
     <ClInclude Include="haanju_utils.hpp" />
     <ClInclude Include="HungarianMethod.h" />

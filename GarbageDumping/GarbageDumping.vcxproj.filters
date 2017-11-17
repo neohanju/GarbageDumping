@@ -6,11 +6,13 @@
     <ClCompile Include="HungarianMethod.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="haanju_types.cpp" />
+    <ClCompile Include="ActionClassifier.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MTTracker.h" />
     <ClInclude Include="haanju_utils.hpp" />
     <ClInclude Include="HungarianMethod.h" />
     <ClInclude Include="haanju_types.hpp" />
+    <ClInclude Include="ActionClassifier.h" />
   </ItemGroup>
 </Project>

@@ -80,6 +80,8 @@ public:
 	cv::Rect2d headBox;
 	cv::Point2d headPoint;
 	double confidence;
+	int nFrame; // Action recognition Related (Temporary implementation)
+	int jsonId; // Action recognition Related (Temporary implementation)
 };
 typedef std::vector<CKeyPoints> KeyPointsSet;
 
