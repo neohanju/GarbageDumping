@@ -42,7 +42,7 @@ void CActionClassifier::UpdatePoselet(hj::KeyPointsSet _curKeypoints, int _frame
 			if (curPoselet->id != keypointIter->jsonId) { continue; }
 
 			curPoselet->lastUpdate = keypointIter->nFrame;
-			curPoselet->nEndFrame = keypointIter->nFrame;         // TODO: EndFrame과 last update은 달라야 한다 interpolation 해야하는 지점들 찾기위함(나중에 둘중 하나는 없앨지도..)
+			curPoselet->nEndFrame  = keypointIter->nFrame;         // TODO: EndFrame과 last update은 달라야 한다 interpolation 해야하는 지점들 찾기위함(나중에 둘중 하나는 없앨지도..)
 			curPoselet->duration++;
 			curPoselet->vectorPose.push_back(keypointIter->points);
 			newActivePoselet.push_back(curPoselet);
@@ -56,6 +56,7 @@ void CActionClassifier::UpdatePoselet(hj::KeyPointsSet _curKeypoints, int _frame
 		keypointIter++;
 	}
 	
+	// Update pending poselet
 	for (std::deque<CPoselet*>::iterator poseIter = activePoselet.begin();
 		poseIter != activePoselet.end(); poseIter++)
 	{
@@ -78,10 +79,12 @@ void CActionClassifier::UpdatePoselet(hj::KeyPointsSet _curKeypoints, int _frame
 			if (curPoselet->id != keypointIter->jsonId) { continue; }
 
 			curPoselet->lastUpdate = keypointIter->nFrame;
-			curPoselet->nEndFrame = keypointIter->nFrame;         // TODO: EndFrame과 last update은 달라야 한다 interpolation 해야하는 지점들 찾기위함(나중에 둘중 하나는 없앨지도..)
+			curPoselet->nEndFrame  = keypointIter->nFrame;         // TODO: EndFrame과 last update은 달라야 한다 interpolation 해야하는 지점들 찾기위함(나중에 둘중 하나는 없앨지도..)
 			curPoselet->duration++;
 			curPoselet->vectorPose.push_back(keypointIter->points);
 			newActivePoselet.push_back(curPoselet);
+
+			//TODO: interpolation 
 
 			keypointIter = _curKeypoints.erase(keypointIter);
 			match = true;
@@ -92,6 +95,7 @@ void CActionClassifier::UpdatePoselet(hj::KeyPointsSet _curKeypoints, int _frame
 		keypointIter++;
 	}
 
+	// Update pending poselet
 	for (std::deque<CPoselet*>::iterator poseIter = pendingPoselet.begin();
 		poseIter != pendingPoselet.end(); poseIter++)
 	{
@@ -111,17 +115,25 @@ void CActionClassifier::UpdatePoselet(hj::KeyPointsSet _curKeypoints, int _frame
 		newPoselet.lastUpdate  = _curKeypoints[idx].nFrame;
 		newPoselet.nStartFrame = _curKeypoints[idx].nFrame;
 		newPoselet.nEndFrame   = _curKeypoints[idx].nFrame;
+		newPoselet.lastUpdate  = _curKeypoints[idx].nFrame;
 		newPoselet.vectorPose.push_back(_curKeypoints[idx].points);
 
 		newActivePoselet.push_back(&newPoselet);
 	}
 
-
+	// inactive에서 active로 업데이트 될때 update된 프레임 -1이 이전에 최근 업뎃과 같지 않으면 interpolation하는 작업
 	//------------------------------------------------
 	// POSELET TERMINATION
 	//------------------------------------------------
-	
-	// TODO
+	for (std::deque<CPoselet*>::iterator poseIter = newPendingPoselet.begin(); poseIter != newPendingPoselet.end();)
+	{
+		if ((*poseIter)->lastUpdate + stParam_.nMaxPendingFrame < _frameIdx)
+		{
+			poseIter = newPendingPoselet.erase(poseIter);
+			continue;
+		}
+		poseIter++;
+	}
 
 	activePoselet  = newActivePoselet;
 	pendingPoselet = newPendingPoselet;
@@ -140,6 +152,11 @@ void CActionClassifier::Train()
 
 // when input action vector 
 void CActionClassifier::Run()
+{
+}
+
+// Normalize pose
+void CActionClassifier::Normalize()
 {
 }
 

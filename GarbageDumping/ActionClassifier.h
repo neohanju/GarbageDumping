@@ -4,7 +4,6 @@
 #include <list>
 #include <queue>
 #include "haanju_utils.hpp"
-#include <map>
 
 namespace jm
 {
@@ -15,7 +14,7 @@ struct stParamAction
 {
 	stParamAction()
 		:nPoseLength(30)
-		,nPendingFrame(5)
+		,nMaxPendingFrame(5)
 	{};
 
 	~stParamAction() {};
@@ -24,7 +23,7 @@ struct stParamAction
 	// VARIABLES
 	//------------------------------------------------
 	int nPoseLength;
-	int nPendingFrame;
+	int nMaxPendingFrame;
 };
 
 // continuous frame pose 
@@ -35,7 +34,7 @@ class CPoselet
 	//---------------------------------------------------------------
 public:
 	CPoselet()
-		:nPendingFrame(0)
+		//:nPendingFrame(0)
 	{};
 	~CPoselet() {};
 	void interpolation() {};
@@ -47,7 +46,7 @@ public:
 	int id;
 	int nStartFrame;
 	int nEndFrame;
-	int nPendingFrame;
+	//int nPendingFrame;
 	int duration;
 	int lastUpdate;
 	std::vector<int> needInterpolation;
@@ -64,13 +63,14 @@ public:
 	void Initialize(stParamAction &stParam);
 	void Finalize();
 
-	void UpdatePoselet(hj::KeyPointsSet _curKeypoints, int frameIdx);
 
 
 private:
 	void Load();
 	void Train();
 	void Run();
+	void UpdatePoselet(hj::KeyPointsSet _curKeypoints, int frameIdx);
+	void Normalize();
 	void Visualize();
 
 //------------------------------------------------
