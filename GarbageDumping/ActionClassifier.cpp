@@ -20,6 +20,7 @@ void CActionClassifier::Initialize(stParamAction &_stParam)
 
 void CActionClassifier::Finalize()
 {
+
 }
 
 void CActionClassifier::UpdatePoselet(hj::KeyPointsSet _curKeypoints, int _frameIdx)
@@ -78,13 +79,35 @@ void CActionClassifier::UpdatePoselet(hj::KeyPointsSet _curKeypoints, int _frame
 
 			if (curPoselet->id != keypointIter->jsonId) { continue; }
 
+			//interpolation ( TODO: 방법 수정) 
+			for (int size = keypointIter->nFrame - curPoselet->nEndFrame - 1; size > 0; size--)
+			{
+				curPoselet->lastUpdate = keypointIter->nFrame - size;
+				curPoselet->nEndFrame  = keypointIter->nFrame - size;
+				curPoselet->duration++;
+
+				int n = 0;
+				hj::stKeyPoint tmpPoint;
+				std::vector<hj::stKeyPoint> tmpPoints;
+				for (std::vector<hj::stKeyPoint>::iterator pointIter = keypointIter->points.begin();
+					pointIter != keypointIter->points.end(); pointIter++)
+				{
+					tmpPoint.x = (pointIter->x + curPoselet->vectorPose.back()[n].x) / 2;
+					tmpPoint.y = (pointIter->y + curPoselet->vectorPose.back()[n].y) / 2;
+					tmpPoint.confidence = 0;
+
+					tmpPoints.push_back(tmpPoint);
+				}
+
+				curPoselet->vectorPose.push_back(tmpPoints);
+			}
+
 			curPoselet->lastUpdate = keypointIter->nFrame;
 			curPoselet->nEndFrame  = keypointIter->nFrame;         // TODO: EndFrame과 last update은 달라야 한다 interpolation 해야하는 지점들 찾기위함(나중에 둘중 하나는 없앨지도..)
 			curPoselet->duration++;
 			curPoselet->vectorPose.push_back(keypointIter->points);
 			newActivePoselet.push_back(curPoselet);
 
-			//TODO: interpolation 
 
 			keypointIter = _curKeypoints.erase(keypointIter);
 			match = true;
