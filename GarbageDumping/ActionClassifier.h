@@ -3,6 +3,8 @@
 #include <list>
 #include <queue>
 #include <opencv2/highgui/highgui.hpp>
+#include <opencv2\ml.hpp>
+
 #include "haanju_utils.hpp"
 
 namespace jm
@@ -72,14 +74,14 @@ public:
 	CActionClassifier();
 	~CActionClassifier();
 
-	void Initialize(stParamAction &stParam);
+	void Initialize(stParamAction &stParam, std::string _strModelPath);
 	void Finalize();
-	void Run(/*hj::KeyPointsSet _curKeypoints*/ hj::CTrackResult *_curTrackResult, cv::Mat _curFrame, int frameIdx, std::string _strModelPath);
+	void Run(/*hj::KeyPointsSet _curKeypoints*/ hj::CTrackResult *_curTrackResult, cv::Mat _curFrame, int frameIdx);
 
 
 
 private:
-	void Detect(std::string _curModelPath, /*std::deque<CAction*>  _testActions,*/ std::deque<CPoselet*> _activePoselets, hj::CTrackResult *_curTrackResult);
+	void Detect(std::deque<CPoselet*> _activePoselets, hj::CTrackResult *_curTrackResult);
 	void TrainSVM(std::string _saveModelPath);
 	void UpdatePoseletUsingTrack(/*hj::CTrackResult _curTrackResult*/);
 	void Normalize();
@@ -108,6 +110,8 @@ public:
 
 	std::deque<CAction*>  testActions_;
 	std::list<CAction>    listCActions_;
+
+	cv::Ptr<cv::ml::SVM> svm;
 
 private:
 

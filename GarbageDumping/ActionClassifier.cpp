@@ -1,5 +1,4 @@
 #include "ActionClassifier.h"
-#include <opencv2\ml.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 
 namespace jm
@@ -16,7 +15,7 @@ CActionClassifier::~CActionClassifier()
 	Finalize();
 }
 
-void CActionClassifier::Initialize(stParamAction &_stParam)
+void CActionClassifier::Initialize(stParamAction &_stParam, std::string _strModelPath)
 {
 	if (bInit_) { Finalize(); }
 
@@ -26,6 +25,10 @@ void CActionClassifier::Initialize(stParamAction &_stParam)
 	// visualization related
 	bVisualizeResult_ = stParam_.bVisualize;
 	strVisWindowName_ = "Detection result";
+
+	//SVM related
+	svm = cv::ml::SVM::create();
+	svm = cv::ml::SVM::load<cv::ml::SVM>(_strModelPath);
 }
 
 void CActionClassifier::Finalize()
@@ -120,8 +123,7 @@ void CActionClassifier::UpdatePoseletUsingTrack(/*hj::CTrackResult _curTrackResu
 			//	curPoselet->vectorPose.push_back(tmpPoints);
 			//}
 
-			// curPoselet->lastUpdate = this->nCurrentFrameIdx_;
-			curPoselet->nEndFrame  = this->nCurrentFrameIdx_;         // TODO: EndFrame과 last update은 달라야 한다 interpolation 해야하는 지점들 찾기위함(나중에 둘중 하나는 없앨지도..)
+			curPoselet->nEndFrame  = this->nCurrentFrameIdx_;         
 			curPoselet->duration++;
 			curPoselet->vectorObjInfo.push_back(*objectIter);
 			newActivePoselets.push_back(curPoselet);
@@ -182,11 +184,8 @@ void CActionClassifier::UpdatePoseletUsingTrack(/*hj::CTrackResult _curTrackResu
 
 
 // Load python SVM train model 
-void CActionClassifier::Detect(std::string _curModelPath, /*std::deque<CAction*>  _testActions,*/ std::deque<CPoselet*> _activePoselets, hj::CTrackResult *_curTrackResult)
+void CActionClassifier::Detect(std::deque<CPoselet*> _activePoselets, hj::CTrackResult *_curTrackResult)
 {
-	cv::Ptr<cv::ml::SVM> svm = cv::ml::SVM::create();
-	svm = cv::ml::SVM::load<cv::ml::SVM>(_curModelPath);
-	 
 	//all active poselet check
 	for (std::deque<CPoselet*>::iterator poseletIter = _activePoselets.begin();
 		poseletIter != _activePoselets.end(); poseletIter++)
@@ -266,7 +265,7 @@ void CActionClassifier::EliminationStepSize()
 
 
 // when input action vector 
-void CActionClassifier::Run(/*hj::KeyPointsSet _curKeypoints*/ hj::CTrackResult *_curTrackResult, cv::Mat _curFrame, int frameIdx, std::string _strModelPath)
+void CActionClassifier::Run(/*hj::KeyPointsSet _curKeypoints*/ hj::CTrackResult *_curTrackResult, cv::Mat _curFrame, int frameIdx)
 {
 	nCurrentFrameIdx_ = frameIdx;
 	matDetectResult_ = _curFrame.clone();
@@ -277,7 +276,7 @@ void CActionClassifier::Run(/*hj::KeyPointsSet _curKeypoints*/ hj::CTrackResult 
 	
 	if (activePoselets_.size()) 
 	{ 
-		Detect(_strModelPath, activePoselets_, _curTrackResult);
+		Detect(activePoselets_, _curTrackResult);
 		//ResultPackaging(_curTrackResult);
 	}
 	

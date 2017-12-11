@@ -325,7 +325,8 @@ int main(int argc, char** argv)
 	// Action Classification Init
 	jm::stParamAction actionParams;
 	jm::CActionClassifier cClassifier;
-	cClassifier.Initialize(actionParams);
+	std::string strModelPath = std::string(TRAINED_MODEL_PATH) + "\\" + "train.xml";
+	cClassifier.Initialize(actionParams, strModelPath);
 
 
 	for (int fIdx = START_FRAME_INDEX; fIdx < nLastFrameIndex; fIdx++)
@@ -421,8 +422,8 @@ int main(int argc, char** argv)
 
 
 		//Action Classification
-		std::string strModelPath = std::string(TRAINED_MODEL_PATH) + "\\" + "train.xml";
-		cClassifier.Run(&trackResult, matCurFrame, fIdx, strModelPath);        //model path (?)
+		
+		cClassifier.Run(&trackResult, matCurFrame, fIdx);        //model path (?)
 
 		if (trackResult.objectInfos.size())
 		{
