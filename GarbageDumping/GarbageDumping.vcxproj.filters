@@ -6,6 +6,10 @@
     <ClCompile Include="HungarianMethod.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="haanju_types.cpp" />
+    <ClCompile Include="BGModeling.cpp" />
+    <ClCompile Include="fhog.cpp" />
+    <ClCompile Include="kcftracker.cpp" />
+    <ClCompile Include="ThrowDetector.cpp" />
     <ClCompile Include="ActionClassifier.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -13,6 +17,15 @@
     <ClInclude Include="haanju_utils.hpp" />
     <ClInclude Include="HungarianMethod.h" />
     <ClInclude Include="haanju_types.hpp" />
+    <ClInclude Include="BGModeling.h" />
+    <ClInclude Include="params.h" />
+    <ClInclude Include="ffttools.hpp" />
+    <ClInclude Include="fhog.hpp" />
+    <ClInclude Include="kcftracker.hpp" />
+    <ClInclude Include="tracker.h" />
+    <ClInclude Include="recttools.hpp" />
+    <ClInclude Include="labdata.hpp" />
+    <ClInclude Include="ThrowDetector.h" />
     <ClInclude Include="ActionClassifier.h" />
   </ItemGroup>
 </Project>

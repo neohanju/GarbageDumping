@@ -46,7 +46,7 @@ struct stParamTrack
 		, dMinOpticalFlowMajorityRatio(0.5)
 		, dMaxTranslationDistance(30.0)
 		, dMaxDepthDistance(30.0)
-		, nMaxPendingTime(100)
+		, nMaxPendingTime(100) 
 		, nMinBoxHeight(100)
 		, nMinBoxWidth(20)
 		, bVisualize(false)
@@ -121,16 +121,6 @@ private:
 	//	const cv::Mat _frameImage,
 	//	KeyPointsSet &_vecDetections,
 	//	std::vector<CDetectedObject> &_vecDetectedObjects);
-	std::deque<CTracklet> BackwardTracking(
-		std::vector<CKeyPoints> &_vecKeyPoints, 
-		hj::CMatFIFOBuffer &_imageSet,
-		int _timeIndex);
-	TrackletPtQueue ForwardTracking(
-		TrackletPtQueue &_queueTracklets,
-		cv::Mat _prevFrameImage,
-		cv::Mat _currFrameImage,
-		int _currTimeIndex,
-		int _minTrackedFeaturePoints = 4);
 	TrackletPtQueue UpdateTracklets(
 		TrackletPtQueue _keyPointsTracklets,
 		TrackletPtQueue _activeTracklets);

@@ -18,7 +18,7 @@ namespace hj
 struct stKeyPoint
 {
 	stKeyPoint() : x(0.0), y(0.0), confidence(0.0), cvPoint(x, y) {}
-	stKeyPoint(double _x, double _y, double _confidence = 1.0) 
+	stKeyPoint(double _x, double _y, double _confidence = 1.0)
 		: x(_x), y(_y), confidence(_confidence), cvPoint(_x, _y) {}
 	double normL2()
 	{
@@ -80,8 +80,8 @@ public:
 	cv::Rect2d headBox;
 	cv::Point2d headPoint;
 	double confidence;
-	int nFrame; // Action recognition Related (Temporary implementation)
-	int jsonId; // Action recognition Related (Temporary implementation)
+	// int nFrame; // Action recognition Related (Temporary implementation)
+	// int jsonId; // Action recognition Related (Temporary implementation)
 };
 typedef std::vector<CKeyPoints> KeyPointsSet;
 
@@ -107,6 +107,7 @@ public:
 	cv::Rect2d   box;
 	cv::Rect2d   headBox;
 	std::vector<hj::stKeyPoint> keyPoint;
+
 };
 //
 //
@@ -153,7 +154,7 @@ public:
 	cv::Rect2d currentBox() { assert(queueKeyPoints.size() > 0);  return queueKeyPoints.back().bbox; }
 	void insertKeyPoints(const CKeyPoints _keyPoints, int _timeIndex);
 	void replaceKeyPoints(const CKeyPoints _keyPoints, int _timeIndex);
-	cv::Point2d curHeadPoint() { return this->queueKeyPoints.front().headPoint; } 
+	cv::Point2d curHeadPoint() { return this->queueKeyPoints.front().headPoint; }
 
 	//----------------------------------------------------------------
 	// VARIABLES
@@ -228,6 +229,9 @@ public:
 	std::vector<cv::Rect> vecDetectionRects;
 	std::vector<cv::Rect> vecTrackerRects;
 	cv::Mat matMatchingCost;
+
+	//bool bActionDetect;
+	
 };
 
 }
