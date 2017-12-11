@@ -58,7 +58,7 @@ public:
 	int duration;
 	int lastUpdate;      // 30frame씩 묶는것 관련
 	//CAction vectorPose;
-	CAction vectorObjInfo;  // 이름 다시 생각해보기
+	CAction vectorObjInfo;       // 이름 다시 생각해보기
 	bool bActionDetect;          // TODO: change CAction
 
 
@@ -74,30 +74,32 @@ public:
 
 	void Initialize(stParamAction &stParam);
 	void Finalize();
-	void Run(/*hj::KeyPointsSet _curKeypoints*/ hj::CTrackResult _curTrackResult, cv::Mat _curFrame, int frameIdx, std::string _strModelPath);
+	void Run(/*hj::KeyPointsSet _curKeypoints*/ hj::CTrackResult *_curTrackResult, cv::Mat _curFrame, int frameIdx, std::string _strModelPath);
 
 
 
 private:
-	void Detect(std::string _curModelPath, /*std::deque<CAction*>  _testActions,*/ std::deque<CPoselet*> _activePoselets);
+	void Detect(std::string _curModelPath, /*std::deque<CAction*>  _testActions,*/ std::deque<CPoselet*> _activePoselets, hj::CTrackResult *_curTrackResult);
 	void TrainSVM(std::string _saveModelPath);
-	void UpdatePoseletUsingTrack(hj::CTrackResult _curTrackResult);
+	void UpdatePoseletUsingTrack(/*hj::CTrackResult _curTrackResult*/);
 	void Normalize();
-	void Visualize();
+	void Visualize(hj::CTrackResult *_curTrackResult);
 	void EliminationStepSize();
+	//void ResultPackaging(hj::CTrackResult _curTrackResult);
 	//void LoadData(std::deque<CPoselet*> _activePoselets);
 	//------------------------------------------------
 	// VARIABLES
 	//------------------------------------------------
 public:
-	bool          bInit_;
-	stParamAction stParam_;
-	unsigned int  nCurrentFrameIdx_;
+	bool             bInit_;
+	stParamAction    stParam_;
+	unsigned int     nCurrentFrameIdx_;
+	hj::CTrackResult curTrackResult_;
 
 	/* visualization related */
-	bool          bVisualizeResult_;
-	cv::Mat       matDetectResult_;
-	std::string   strVisWindowName_;
+	bool             bVisualizeResult_;
+	cv::Mat          matDetectResult_;
+	std::string      strVisWindowName_;
 
 	/* detection input data related */
 	std::list<CPoselet>   listCPoselets_;

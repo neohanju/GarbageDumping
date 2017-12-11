@@ -38,7 +38,7 @@ void CActionClassifier::Finalize()
 	if (bVisualizeResult_) { cv::destroyWindow(strVisWindowName_); }
 }
 
-void CActionClassifier::UpdatePoseletUsingTrack(hj::CTrackResult _curTrackResult)
+void CActionClassifier::UpdatePoseletUsingTrack(/*hj::CTrackResult _curTrackResult*/)
 {
 	//active Poselet update
 	std::deque<CPoselet*> newActivePoselets;
@@ -47,8 +47,8 @@ void CActionClassifier::UpdatePoseletUsingTrack(hj::CTrackResult _curTrackResult
 	//---------------------------------------------------
 	// MATCHING STEP 01: active Poselet <-> keypoints
 	//---------------------------------------------------
-	for (std::vector<hj::CObjectInfo>::iterator objectIter = _curTrackResult.objectInfos.begin();
-		objectIter != _curTrackResult.objectInfos.end();)
+	for (std::vector<hj::CObjectInfo>::iterator objectIter = curTrackResult_.objectInfos.begin();
+		objectIter != curTrackResult_.objectInfos.end();)
 	{
 		bool match = false;
 		for (int poseletIdx = 0; poseletIdx < activePoselets_.size(); poseletIdx++)
@@ -57,14 +57,12 @@ void CActionClassifier::UpdatePoseletUsingTrack(hj::CTrackResult _curTrackResult
 
 			if (curPoselet->id != objectIter->id) { continue; }
 
-			//curPoselet->lastUpdate = this->nCurrentFrameIdx_;
 			curPoselet->nEndFrame = this->nCurrentFrameIdx_;         // TODO: EndFrame과 last update은 달라야 한다 interpolation 해야하는 지점들 찾기위함(나중에 둘중 하나는 없앨지도..)
 			curPoselet->duration++;
-			//curPoselet->vectorPose.push_back(/*objectIter->keyPoint*/);
 			curPoselet->vectorObjInfo.push_back(*objectIter);
 			newActivePoselets.push_back(curPoselet);
 
-			objectIter = _curTrackResult.objectInfos.erase(objectIter);
+			objectIter = curTrackResult_.objectInfos.erase(objectIter);
 			match = true;
 			break;
 		}
@@ -77,7 +75,7 @@ void CActionClassifier::UpdatePoseletUsingTrack(hj::CTrackResult _curTrackResult
 	for (std::deque<CPoselet*>::iterator poseIter = activePoselets_.begin();
 		poseIter != activePoselets_.end(); poseIter++)
 	{
-		if ((*poseIter)->nEndFrame /*lastUpdate*/ == this->nCurrentFrameIdx_) { continue; }
+		if ((*poseIter)->nEndFrame == this->nCurrentFrameIdx_) { continue; }
 		newPendingPoselets.push_back((*poseIter));
 	}
 
@@ -85,8 +83,8 @@ void CActionClassifier::UpdatePoseletUsingTrack(hj::CTrackResult _curTrackResult
 	//---------------------------------------------------
 	// MATCHING STEP 02: pending Poselet <-> keypoints
 	//---------------------------------------------------
-	for (std::vector<hj::CObjectInfo>::iterator objectIter = _curTrackResult.objectInfos.begin();
-		objectIter != _curTrackResult.objectInfos.end();)
+	for (std::vector<hj::CObjectInfo>::iterator objectIter = curTrackResult_.objectInfos.begin();
+		objectIter != curTrackResult_.objectInfos.end();)
 	{
 		bool match = false;
 		for (int poseletIdx = 0; poseletIdx < pendingPoselets_.size(); poseletIdx++)
@@ -125,12 +123,11 @@ void CActionClassifier::UpdatePoseletUsingTrack(hj::CTrackResult _curTrackResult
 			// curPoselet->lastUpdate = this->nCurrentFrameIdx_;
 			curPoselet->nEndFrame  = this->nCurrentFrameIdx_;         // TODO: EndFrame과 last update은 달라야 한다 interpolation 해야하는 지점들 찾기위함(나중에 둘중 하나는 없앨지도..)
 			curPoselet->duration++;
-			//curPoselet->vectorPose.push_back(objectIter->keyPoint);
 			curPoselet->vectorObjInfo.push_back(*objectIter);
 			newActivePoselets.push_back(curPoselet);
 
 
-			objectIter = _curTrackResult.objectInfos.erase(objectIter);
+			objectIter = curTrackResult_.objectInfos.erase(objectIter);
 			match = true;
 			break;
 		}
@@ -143,7 +140,7 @@ void CActionClassifier::UpdatePoseletUsingTrack(hj::CTrackResult _curTrackResult
 	for (std::deque<CPoselet*>::iterator poseIter = pendingPoselets_.begin();
 		poseIter != pendingPoselets_.end(); poseIter++)
 	{
-		if ((*poseIter)->nEndFrame/*lastUpdate*/ == this->nCurrentFrameIdx_) { continue; }
+		if ((*poseIter)->nEndFrame == this->nCurrentFrameIdx_) { continue; }
 		newPendingPoselets.push_back((*poseIter));
 	}
 
@@ -151,17 +148,15 @@ void CActionClassifier::UpdatePoseletUsingTrack(hj::CTrackResult _curTrackResult
 	//---------------------------------------------------
 	// MATCHING STEP 03: Generation Poselet
 	//---------------------------------------------------
-	for (int idx = 0; idx < _curTrackResult.objectInfos.size(); idx++)
+	for (int idx = 0; idx < curTrackResult_.objectInfos.size(); idx++)
 	{
 		CPoselet newPoselet;
 
-		newPoselet.id = _curTrackResult.objectInfos[idx].id;
-		// newPoselet.lastUpdate = this->nCurrentFrameIdx_;
+		newPoselet.id = curTrackResult_.objectInfos[idx].id;
 		newPoselet.nStartFrame = this->nCurrentFrameIdx_;
 		newPoselet.nEndFrame = this->nCurrentFrameIdx_;
 		newPoselet.duration = 1;
-		//newPoselet.vectorPose.push_back(_curTrackResult.objectInfos[idx].keyPoint);
-		newPoselet.vectorObjInfo.push_back(_curTrackResult.objectInfos[idx]);
+		newPoselet.vectorObjInfo.push_back(curTrackResult_.objectInfos[idx]);
 
 		this->listCPoselets_.push_back(newPoselet);
 		newActivePoselets.push_back(&this->listCPoselets_.back());
@@ -172,7 +167,7 @@ void CActionClassifier::UpdatePoseletUsingTrack(hj::CTrackResult _curTrackResult
 	//------------------------------------------------
 	for (std::deque<CPoselet*>::iterator poseIter = newPendingPoselets.begin(); poseIter != newPendingPoselets.end();)
 	{
-		if ((*poseIter)->nEndFrame/*lastUpdate*/ + stParam_.nMaxPendingFrame < nCurrentFrameIdx_)
+		if ((*poseIter)->nEndFrame + stParam_.nMaxPendingFrame < nCurrentFrameIdx_)
 		{
 			poseIter = newPendingPoselets.erase(poseIter);
 			continue;
@@ -187,7 +182,7 @@ void CActionClassifier::UpdatePoseletUsingTrack(hj::CTrackResult _curTrackResult
 
 
 // Load python SVM train model 
-void CActionClassifier::Detect(std::string _curModelPath, /*std::deque<CAction*>  _testActions,*/ std::deque<CPoselet*> _activePoselets)
+void CActionClassifier::Detect(std::string _curModelPath, /*std::deque<CAction*>  _testActions,*/ std::deque<CPoselet*> _activePoselets, hj::CTrackResult *_curTrackResult)
 {
 	cv::Ptr<cv::ml::SVM> svm = cv::ml::SVM::create();
 	svm = cv::ml::SVM::load<cv::ml::SVM>(_curModelPath);
@@ -225,16 +220,15 @@ void CActionClassifier::Detect(std::string _curModelPath, /*std::deque<CAction*>
 		sampleMat.convertTo(tmpMat, CV_32FC1);
 		int res = svm->predict(tmpMat.t());
 		printf("frame: %d  trackID: %d response: %d\n", nCurrentFrameIdx_, (*poseletIter)->id, res);
-		(*poseletIter)->bActionDetect = true;
-
-		////elimination front step size object info.
-		//for (int poseIdx = 0; poseIdx < stParam_.nStepSize; poseIdx++)
-		//{
-		//	(*poseletIter)->vectorObjInfo.pop_front();
-		//	(*poseletIter)->nStartFrame++;
-		//}
-		//(*poseletIter)->bActionDetect = false;
-
+		if (res) 
+		{
+			for (int index = 0; index < _curTrackResult->objectInfos.size(); index++)
+			{
+				
+				if (_curTrackResult->objectInfos.at(index).id != (*poseletIter)->id) { continue; }
+				_curTrackResult->objectInfos.at(index).bActionDetect = true;
+			}
+		}
 	}
 
 	
@@ -270,22 +264,26 @@ void CActionClassifier::EliminationStepSize()
 
 }
 
+
 // when input action vector 
-void CActionClassifier::Run(/*hj::KeyPointsSet _curKeypoints*/ hj::CTrackResult _curTrackResult, cv::Mat _curFrame, int frameIdx, std::string _strModelPath)
+void CActionClassifier::Run(/*hj::KeyPointsSet _curKeypoints*/ hj::CTrackResult *_curTrackResult, cv::Mat _curFrame, int frameIdx, std::string _strModelPath)
 {
 	nCurrentFrameIdx_ = frameIdx;
-	UpdatePoseletUsingTrack(_curTrackResult);
 	matDetectResult_ = _curFrame.clone();
+	curTrackResult_ = *_curTrackResult;
+	UpdatePoseletUsingTrack();
+	
 
 	
 	if (activePoselets_.size()) 
 	{ 
-		Detect(_strModelPath, activePoselets_); 
+		Detect(_strModelPath, activePoselets_, _curTrackResult);
+		//ResultPackaging(_curTrackResult);
 	}
 	
 
 	/* visualize */
-	if (bVisualizeResult_) { Visualize(); }
+	if (bVisualizeResult_) { Visualize(_curTrackResult); }
 
 	EliminationStepSize();
 }
@@ -298,7 +296,7 @@ void CActionClassifier::Normalize()
 
 
 // Result visualization
-void CActionClassifier::Visualize()
+void CActionClassifier::Visualize(hj::CTrackResult *_curTrackResult)
 {
 	/* frame information */
 	char strFrameInfo[100];
@@ -307,25 +305,23 @@ void CActionClassifier::Visualize()
 	cv::putText(matDetectResult_, strFrameInfo, cv::Point(6, 20), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(255, 255, 255));
 
 
-	//activePoselets based visualize
-	for (int poseletIdx = 0; poseletIdx < activePoselets_.size(); poseletIdx++)
+	for (int index = 0; index < _curTrackResult->objectInfos.size(); index++)
 	{
-		CPoselet *curPoselet = activePoselets_[poseletIdx];
+		hj::CObjectInfo curObjInfo = _curTrackResult->objectInfos.at(index);
 
-		if (curPoselet->vectorObjInfo.size() < stParam_.nPoseLength) { continue; }
-		if (!curPoselet->bActionDetect) { continue; }
-		if (curPoselet->nEndFrame != this->nCurrentFrameIdx_) { continue; }
-
+		if (!curObjInfo.bActionDetect) { continue; }
+		
 		cv::rectangle(
 			matDetectResult_,
-			curPoselet->vectorObjInfo.back().box,
+			curObjInfo.box,
 			cv::Scalar(0, 0, 255), 1);
 
 		char strDetectResult[100];
-		sprintf_s(strDetectResult, "Throwing Detected(%d person)", curPoselet->id);
+		sprintf_s(strDetectResult, "Throwing Detected(%d person)", curObjInfo.id);
 		cv::putText(matDetectResult_, strDetectResult, cv::Point(10, 200), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 0, 255), 2);
 
 	}
+		
 
 	////---------------------------------------------------
 	//// RECORD
@@ -345,33 +341,5 @@ void CActionClassifier::Visualize()
 }
 
 
-/*
-void CActionClassifier::LoadData(std::deque<CPoselet*> _activePoselets)
-{
-std::deque<CAction*> newActionSets;
-//all active poselet check
-for (std::deque<CPoselet*>::iterator poseletIter = _activePoselets.begin();
-poseletIter != _activePoselets.end(); poseletIter++)
-{
-if ((*poseletIter)->vectorPose.size() < stParam_.nPoseLength) { continue; }
-
-CAction newAction;
-for (int idx = 0; idx < (*poseletIter)->vectorPose.size();idx++)
-{
-if (idx > stParam_.nPoseLength) { break; }
-newAction.push_back((*poseletIter)->vectorPose[idx]);
-//
-//if (idx < stParam_.nStepSize) {
-//	(*poseletIter)->vectorPose.pop_front();
-//	(*poseletIter)->nStartFrame++;
-//}
-
-}
-this->listCActions_.push_back(newAction);
-newActionSets.push_back(&this->listCActions_.back());
-}
-testActions_ = newActionSets;
-}
-*/
 
 }

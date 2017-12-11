@@ -87,11 +87,11 @@
 #include "ThrowDetector.h"
 
 
-#define KEYPOINTS_BASE_PATH ("D:\\workspace\\data\\etri_tracking_data\\pose_text")
-#define VIDEO_BASE_PATH ("D:\\workspace\\data\\etri_tracking_data")
+#define KEYPOINTS_BASE_PATH ("D:\\etri_data\\pose_text")
+#define VIDEO_BASE_PATH ("D:\\etri_data\\numbering\\numbering")
 #define RESULT_PATH ("D:\\Result\\GarbageDumpingResult")
-#define HEATMAP_PATH ("D:\\workspace\\data\\output_heatmaps")
-#define TRAINED_MODEL_PATH ("D:\\workspace\\data\\GarbageDumping - MTTupdate")
+#define HEATMAP_PATH ("D:\\etri_data\\output_heatmaps")
+#define TRAINED_MODEL_PATH ("D:\\workspace\\github\\GarbageDumping")
 
 #define TARGET_VIDEO ("172") // for staying: 165. start from 165.
 #define START_FRAME_INDEX (0)
@@ -343,86 +343,95 @@ int main(int argc, char** argv)
 
 
 
-		// Load the Pose Background Heatmap
-		strFilePath_heat = strHeatPath + "\\"
-			+ std::string(TARGET_VIDEO) + hj::FormattedString("_%012d_heatmaps.png", fIdx);
+		//// Load the Pose Background Heatmap
+		//strFilePath_heat = strHeatPath + "\\"
+		//	+ std::string(TARGET_VIDEO) + hj::FormattedString("_%012d_heatmaps.png", fIdx);
 
-		Mat Heatmap = imread(strFilePath_heat);
-		cv::cvtColor(Heatmap, Heatmap, CV_BGR2GRAY);
-		cv::imshow("Heatmap", Heatmap);
+		//Mat Heatmap = imread(strFilePath_heat);
+		//cv::cvtColor(Heatmap, Heatmap, CV_BGR2GRAY);
+		//cv::imshow("Heatmap", Heatmap);
 
-		// Visualize SAVE
-		matCurFrame.copyTo(matDisp);
+		//// Visualize SAVE
+		//matCurFrame.copyTo(matDisp);
 
-		// Background modeling for fixed camera
-		Mat matCurFrame_re;
-		resize(matCurFrame, matCurFrame_re, Size(imageWidth / RESIZE_RATIO_BG, imageHeight / RESIZE_RATIO_BG), 0, 0, 1);
-		ipl_imgRe = cvCloneImage(&(IplImage)matCurFrame_re);
-		double s = sum(matCurFrame_re).val[0]; // for skipping the black frames
+		//// Background modeling for fixed camera
+		//Mat matCurFrame_re;
+		//resize(matCurFrame, matCurFrame_re, Size(imageWidth / RESIZE_RATIO_BG, imageHeight / RESIZE_RATIO_BG), 0, 0, 1);
+		//ipl_imgRe = cvCloneImage(&(IplImage)matCurFrame_re);
+		//double s = sum(matCurFrame_re).val[0]; // for skipping the black frames
 
-		if (bInit_vibe == false && s > 0)
-		{
-			m_ProbModel.init(ipl_imgRe, 1); // To do: remove all ipl_image type.
-			m_Age_map = Mat::ones(matCurFrame_re.rows, matCurFrame_re.cols, CV_32FC1) * 16;
-			ipl_Age = cvCloneImage(&(IplImage)m_Age_map);
-			fZero_ratio = -1.0;
-			bInit_vibe = true;
-			m_fg_road = Mat::zeros(matCurFrame_re.rows, matCurFrame_re.cols, CV_8UC1);
+		//if (bInit_vibe == false && s > 0)
+		//{
+		//	m_ProbModel.init(ipl_imgRe, 1); // To do: remove all ipl_image type.
+		//	m_Age_map = Mat::ones(matCurFrame_re.rows, matCurFrame_re.cols, CV_32FC1) * 16;
+		//	ipl_Age = cvCloneImage(&(IplImage)m_Age_map);
+		//	fZero_ratio = -1.0;
+		//	bInit_vibe = true;
+		//	m_fg_road = Mat::zeros(matCurFrame_re.rows, matCurFrame_re.cols, CV_8UC1);
 
-		}
-		else if (bInit_vibe == true)
-		{
-			m_ProbModel.m_Cur = ipl_imgRe;
-			m_ProbModel.update_vibe(ipl_foreground, ipl_Age, ipl_FGS, fIdx, fZero_ratio);
-			m_fg_map = cvarrToMat(ipl_foreground);
-			// 170926. Gaussian Smoothing for Clear background...
-			//	GaussianBlur(m_fg_map, m_fg_map, Size(3, 3), 0, 0);
-			//	medianBlur(m_fg_map, m_fg_map, 3);
-			
-			 
-			cv::imshow("foreground", m_fg_map);
-			bVibe_on = true;
-		}
+		//}
+		//else if (bInit_vibe == true)
+		//{
+		//	m_ProbModel.m_Cur = ipl_imgRe;
+		//	m_ProbModel.update_vibe(ipl_foreground, ipl_Age, ipl_FGS, fIdx, fZero_ratio);
+		//	m_fg_map = cvarrToMat(ipl_foreground);
+		//	// 170926. Gaussian Smoothing for Clear background...
+		//	//	GaussianBlur(m_fg_map, m_fg_map, Size(3, 3), 0, 0);
+		//	//	medianBlur(m_fg_map, m_fg_map, 3);
+		//	
+		//	 
+		//	cv::imshow("foreground", m_fg_map);
+		//	bVibe_on = true;
+		//}
 
 	
-		// Throwing detection mode: 1. KCF-based, 2. Mask-based
-		// How to combine?? 
+		//// Throwing detection mode: 1. KCF-based, 2. Mask-based
+		//// How to combine?? 
 
 
-		
-		// Throwing Detection using Joint position and Foreground
-		if (bVibe_on == true) 
-		{
-			// 0. KeyPoints Save... -> 171110. Point change according to Tracking...  
-			int nObj = trackResult.objectInfos.size();
+		//
+		//// Throwing Detection using Joint position and Foreground
+		//if (bVibe_on == true) 
+		//{
+		//	// 0. KeyPoints Save... -> 171110. Point change according to Tracking...  
+		//	int nObj = trackResult.objectInfos.size();
 
-			// Connect to Multiple Pedestrian Class... How to support multiple people... 
-			cThwDetector.m_bHandSet = false;
-			for (int n = 0; n < nObj; n++)
-			{
-				int nID = trackResult.objectInfos.at(n).id;
+		//	// Connect to Multiple Pedestrian Class... How to support multiple people... 
+		//	cThwDetector.m_bHandSet = false;
+		//	for (int n = 0; n < nObj; n++)
+		//	{
+		//		int nID = trackResult.objectInfos.at(n).id;
 
-				if (cThwDetector.m_ID < 0) // if ID is not initialized...
-					cThwDetector.m_ID = nID;
-					
+		//		if (cThwDetector.m_ID < 0) // if ID is not initialized...
+		//			cThwDetector.m_ID = nID;
+		//			
 
-				if (cThwDetector.m_ID == nID)
-				{
-					bool bDetect = cThwDetector.Detect(trackResult, n, matCurFrame, m_fg_map, Heatmap);
-				}
-			}	
-		}
+		//		if (cThwDetector.m_ID == nID)
+		//		{
+		//			bool bDetect = cThwDetector.Detect(trackResult, n, matCurFrame, m_fg_map, Heatmap);
+		//		}
+		//	}	
+		//}
 
-		// Dispaly mode...
+		//// Dispaly mode...
 
 
-		// Display the ALL result
-		cThwDetector.m_DispMat.release();
+		//// Display the ALL result
+		//cThwDetector.m_DispMat.release();
 
 
 		//Action Classification
 		std::string strModelPath = std::string(TRAINED_MODEL_PATH) + "\\" + "train.xml";
-		cClassifier.Run(trackResult, matCurFrame, fIdx, strModelPath);        //model path (?)
+		cClassifier.Run(&trackResult, matCurFrame, fIdx, strModelPath);        //model path (?)
+
+		if (trackResult.objectInfos.size())
+		{
+			if (trackResult.objectInfos.at(0).bActionDetect)
+			{
+				printf("Detect");
+			}
+			
+		}
 	}
 
 	
