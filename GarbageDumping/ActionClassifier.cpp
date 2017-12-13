@@ -187,15 +187,15 @@ void CActionClassifier::UpdatePoseletUsingTrack()
 // Load python SVM train model 
 void CActionClassifier::Detect(std::deque<CPoselet*> _activePoselets, hj::CTrackResult *_curTrackResult)
 {	
+	listActionResult.clear();
 
-	listActionResult.clear();     // 이 구조 수정하는거 고려해보기
-	//30frame 만족한다면.
 	for (std::deque<CPoselet*>::iterator poseletIter = _activePoselets.begin();
 		poseletIter != _activePoselets.end(); poseletIter++)
 	{
 		stActionResult curActionResult;
 		curActionResult.trackId = (*poseletIter)->id;
 
+		//30frame 채워지지 않았다면 이전 Frame의 결과를 받아오기
 		if ((*poseletIter)->vectorObjInfo.size() < stParam_.nPoseLength) 
 		{
 			for (std::vector<stActionResult>::iterator prevResultIter = actionResult_.actionResults.begin();
@@ -207,6 +207,7 @@ void CActionClassifier::Detect(std::deque<CPoselet*> _activePoselets, hj::CTrack
 			}
 		}
 
+		//30frame 만족한다면 Detect해서 결과 저장.
 		else 
 		{
 			cv::Mat sampleMat, tmpMat;
