@@ -96,7 +96,7 @@ class CObjectInfo
 	//----------------------------------------------------------------
 public:
 	// constructors
-	CObjectInfo() : id(0), box(0.0, 0.0, 0.0, 0.0), bActionDetect(false) {}
+	CObjectInfo() : id(0), box(0.0, 0.0, 0.0, 0.0) {}
 	~CObjectInfo() {}
 
 	//----------------------------------------------------------------
@@ -107,8 +107,6 @@ public:
 	cv::Rect2d   box;
 	cv::Rect2d   headBox;
 	std::vector<hj::stKeyPoint> keyPoint;
-	
-	bool bActionDetect;
 
 };
 //
