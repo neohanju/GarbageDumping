@@ -1,4 +1,5 @@
 #include "ActionClassifier.h"
+#include <time.h>
 #include <opencv2/imgproc/imgproc.hpp>
 
 namespace jm
@@ -41,7 +42,7 @@ void CActionClassifier::Finalize()
 	if (bVisualizeResult_) { cv::destroyWindow(strVisWindowName_); }
 }
 
-void CActionClassifier::UpdatePoseletUsingTrack(/*hj::CTrackResult _curTrackResult*/)
+void CActionClassifier::UpdatePoseletUsingTrack()
 {
 	//active Poselet update
 	std::deque<CPoselet*> newActivePoselets;
@@ -185,53 +186,57 @@ void CActionClassifier::UpdatePoseletUsingTrack(/*hj::CTrackResult _curTrackResu
 
 // Load python SVM train model 
 void CActionClassifier::Detect(std::deque<CPoselet*> _activePoselets, hj::CTrackResult *_curTrackResult)
-{
-	//all active poselet check
+{	
+
+	listActionResult.clear();     // 이 구조 수정하는거 고려해보기
+	//30frame 만족한다면.
 	for (std::deque<CPoselet*>::iterator poseletIter = _activePoselets.begin();
 		poseletIter != _activePoselets.end(); poseletIter++)
 	{
-		if ((*poseletIter)->vectorObjInfo.size() < stParam_.nPoseLength) { continue; }
-/*
-		//float testData[30][36] = {};
+		stActionResult curActionResult;
+		curActionResult.trackId = (*poseletIter)->id;
 
-		for (int poseIdx = 0; poseIdx < (*poseletIter)->vectorObjInfo.size(); poseIdx++)
+		if ((*poseletIter)->vectorObjInfo.size() < stParam_.nPoseLength) 
 		{
-			for (int pointIdx = 0; (*poseletIter)->vectorObjInfo.at(0).keyPoint.size(); pointIdx++)
+			for (std::vector<stActionResult>::iterator prevResultIter = actionResult_.actionResults.begin();
+				prevResultIter != actionResult_.actionResults.end(); prevResultIter++)
 			{
-				testData[poseIdx][2 * pointIdx] = (*poseletIter)->vectorObjInfo.at(poseIdx).keyPoint.at(pointIdx).x - (*poseletIter)->vectorObjInfo.at(pointIdx).keyPoint.at(1).x;
-				testData[poseIdx][2 * pointIdx + 1] = (*poseletIter)->vectorObjInfo.at(poseIdx).keyPoint.at(pointIdx).y - (*poseletIter)->vectorObjInfo.at(pointIdx).keyPoint.at(1).y;
-			}
-		}
-*/
-		cv::Mat sampleMat, tmpMat;
-		for (CAction::iterator objIter = (*poseletIter)->vectorObjInfo.begin();
-			objIter != (*poseletIter)->vectorObjInfo.end(); objIter++ )
-		{
-			
-			for (std::vector<hj::stKeyPoint>::iterator pointIter = objIter->keyPoint.begin();
-				pointIter != objIter->keyPoint.end(); pointIter++)
-			{
-				sampleMat.push_back(pointIter->x - objIter->keyPoint.at(1).x);
-				sampleMat.push_back(pointIter->y - objIter->keyPoint.at(1).y);
+				if (prevResultIter->trackId != (*poseletIter)->id) { continue; }
+
+				curActionResult.bActionDetect = prevResultIter->bActionDetect;
 			}
 		}
 
-		sampleMat.convertTo(tmpMat, CV_32FC1);
-		int res = svm->predict(tmpMat.t());
-		printf("frame: %d  trackID: %d response: %d\n", nCurrentFrameIdx_, (*poseletIter)->id, res);
-		if (res) 
+		else 
 		{
-			for (int index = 0; index < _curTrackResult->objectInfos.size(); index++)
+			cv::Mat sampleMat, tmpMat;
+			for (CAction::iterator objIter = (*poseletIter)->vectorObjInfo.begin();
+				objIter != (*poseletIter)->vectorObjInfo.end(); objIter++)
 			{
-				
-				if (_curTrackResult->objectInfos.at(index).id != (*poseletIter)->id) { continue; }
-				_curTrackResult->objectInfos.at(index).bActionDetect = true;
+
+				for (std::vector<hj::stKeyPoint>::iterator pointIter = objIter->keyPoint.begin();
+					pointIter != objIter->keyPoint.end(); pointIter++)
+				{
+					sampleMat.push_back(pointIter->x - objIter->keyPoint.at(1).x);
+					sampleMat.push_back(pointIter->y - objIter->keyPoint.at(1).y);
+				}
 			}
-		}
+
+			sampleMat.convertTo(tmpMat, CV_32FC1);
+			int res = svm->predict(tmpMat.t());
+			printf("frame: %d  trackID: %d response: %d\n", nCurrentFrameIdx_, (*poseletIter)->id, res);
+
+			if (res)
+				curActionResult.bActionDetect = true;
+			else
+				curActionResult.bActionDetect = false;
+		}			
+
+
+		listActionResult.push_back(curActionResult);
 	}
-
-	
 }
+
 
 // Train in opencv SVM model 
 void CActionClassifier::TrainSVM(std::string _saveModelPath)
@@ -265,7 +270,7 @@ void CActionClassifier::EliminationStepSize()
 
 
 // when input action vector 
-void CActionClassifier::Run(/*hj::KeyPointsSet _curKeypoints*/ hj::CTrackResult *_curTrackResult, cv::Mat _curFrame, int frameIdx)
+CActionResultSet CActionClassifier::Run(hj::CTrackResult *_curTrackResult, cv::Mat _curFrame, int frameIdx)
 {
 	nCurrentFrameIdx_ = frameIdx;
 	matDetectResult_ = _curFrame.clone();
@@ -273,18 +278,17 @@ void CActionClassifier::Run(/*hj::KeyPointsSet _curKeypoints*/ hj::CTrackResult 
 	UpdatePoseletUsingTrack();
 	
 
+	Detect(activePoselets_, _curTrackResult);
+	ResultPackaging();
 	
-	if (activePoselets_.size()) 
-	{ 
-		Detect(activePoselets_, _curTrackResult);
-		//ResultPackaging(_curTrackResult);
-	}
 	
 
 	/* visualize */
 	if (bVisualizeResult_) { Visualize(_curTrackResult); }
 
 	EliminationStepSize();
+
+	return this->actionResult_;
 }
 
 
@@ -293,6 +297,17 @@ void CActionClassifier::Normalize()
 {
 }
 
+
+void CActionClassifier::ResultPackaging()
+{
+	time_t timePackaging = clock();
+	actionResult_.frameIdx = nCurrentFrameIdx_;
+	actionResult_.timeStamp = (unsigned int)timePackaging;
+	actionResult_.actionResults.clear();
+
+	actionResult_.actionResults = listActionResult;
+
+}
 
 // Result visualization
 void CActionClassifier::Visualize(hj::CTrackResult *_curTrackResult)
@@ -303,24 +318,28 @@ void CActionClassifier::Visualize(hj::CTrackResult *_curTrackResult)
 	cv::rectangle(matDetectResult_, cv::Rect(5, 2, 100, 22), cv::Scalar(0, 0, 0), CV_FILLED);
 	cv::putText(matDetectResult_, strFrameInfo, cv::Point(6, 20), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(255, 255, 255));
 
-
-	for (int index = 0; index < _curTrackResult->objectInfos.size(); index++)
+	for (std::vector<stActionResult>::iterator resultIter = listActionResult.begin();
+		resultIter != listActionResult.end(); resultIter++)
 	{
-		hj::CObjectInfo curObjInfo = _curTrackResult->objectInfos.at(index);
+		if (!resultIter->bActionDetect) { continue; }
 
-		if (!curObjInfo.bActionDetect) { continue; }
-		
-		cv::rectangle(
-			matDetectResult_,
-			curObjInfo.box,
-			cv::Scalar(0, 0, 255), 1);
+		for (int index = 0; index < _curTrackResult->objectInfos.size(); index++)
+		{
+			if (_curTrackResult->objectInfos.at(index).id != resultIter->trackId) { continue; }
 
-		char strDetectResult[100];
-		sprintf_s(strDetectResult, "Throwing Detected(%d person)", curObjInfo.id);
-		cv::putText(matDetectResult_, strDetectResult, cv::Point(10, 200), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 0, 255), 2);
+			cv::rectangle(
+				matDetectResult_,
+				_curTrackResult->objectInfos.at(index).box,
+				cv::Scalar(0, 0, 255), 1);
+
+			char strDetectResult[100];
+			sprintf_s(strDetectResult, "Throwing Detected(%d person)", resultIter->trackId);
+			cv::putText(matDetectResult_, strDetectResult, cv::Point(10, 200), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 0, 255), 2);
+
+		}
 
 	}
-		
+
 
 	////---------------------------------------------------
 	//// RECORD
@@ -333,7 +352,7 @@ void CActionClassifier::Visualize(hj::CTrackResult *_curTrackResult)
 	//}
 
 	cv::namedWindow(strVisWindowName_);
-	cv::moveWindow(strVisWindowName_, 200, 10);
+	cv::moveWindow(strVisWindowName_, 10, 400);
 	cv::imshow(strVisWindowName_, matDetectResult_);
 	cv::waitKey(1);
 	matDetectResult_.release();

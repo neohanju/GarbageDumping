@@ -34,6 +34,41 @@ struct stParamAction
 	bool bTrained;
 };
 
+
+struct stActionResult
+{
+	stActionResult() : trackId(0), bActionDetect(false) {}
+	stActionResult(unsigned int _trackId, bool _bActionDetect)
+		: trackId(_trackId), bActionDetect(_bActionDetect) {}
+
+	unsigned int trackId;
+	bool bActionDetect;
+
+};
+
+/////////////////////////////////////////////////////////////////////////
+// POSE CLASSIFICATION RESULT (OF ENTIRE TARGETS)
+/////////////////////////////////////////////////////////////////////////
+class CActionResultSet
+{
+	//----------------------------------------------------------------
+	// METHODS
+	//----------------------------------------------------------------
+public:
+	// constructors
+	CActionResultSet() : frameIdx(0), timeStamp(0), procTime(0) {}
+	~CActionResultSet() {}
+
+	//----------------------------------------------------------------
+	// VARIABLES
+	//----------------------------------------------------------------
+public:
+	unsigned int frameIdx;
+	unsigned int timeStamp;
+	time_t procTime;
+	std::vector<stActionResult> actionResults;
+};
+
 //typedef std::vector<hj::stKeyPoint> CPosePoints;
 //typedef std::deque<CPosePoints> CAction;
 typedef std::deque<hj::CObjectInfo> CAction;   //change this in final implementation
@@ -76,27 +111,22 @@ public:
 
 	void Initialize(stParamAction &stParam, std::string _strModelPath);
 	void Finalize();
-	void Run(/*hj::KeyPointsSet _curKeypoints*/ hj::CTrackResult *_curTrackResult, cv::Mat _curFrame, int frameIdx);
-
-
+	CActionResultSet Run(hj::CTrackResult *_curTrackResult, cv::Mat _curFrame, int frameIdx);
 
 private:
 	void Detect(std::deque<CPoselet*> _activePoselets, hj::CTrackResult *_curTrackResult);
 	void TrainSVM(std::string _saveModelPath);
-	void UpdatePoseletUsingTrack(/*hj::CTrackResult _curTrackResult*/);
+	void UpdatePoseletUsingTrack();
 	void Normalize();
+	void ResultPackaging();
 	void Visualize(hj::CTrackResult *_curTrackResult);
 	void EliminationStepSize();
-	//void ResultPackaging(hj::CTrackResult _curTrackResult);
-	//void LoadData(std::deque<CPoselet*> _activePoselets);
-	//------------------------------------------------
-	// VARIABLES
-	//------------------------------------------------
+
 public:
 	bool             bInit_;
 	stParamAction    stParam_;
 	unsigned int     nCurrentFrameIdx_;
-	hj::CTrackResult curTrackResult_;
+	hj::CTrackResult curTrackResult_;         //있어야 하나? 없어도 될듯!
 
 	/* visualization related */
 	bool             bVisualizeResult_;
@@ -113,8 +143,36 @@ public:
 
 	cv::Ptr<cv::ml::SVM> svm;
 
+	/* result related */
+	std::vector<stActionResult> listActionResult;
+	CActionResultSet actionResult_;
+
 private:
 
 };
+
+//
+//class CActionResult
+//{
+//	//----------------------------------------------------------------
+//	// METHODS
+//	//----------------------------------------------------------------
+//
+//public:
+//	CActionResult() : trackId(0), bActionDetect(false) {}
+//	~CActionResult() {}
+//
+//	//----------------------------------------------------------------
+//	// VARIABLES
+//	//----------------------------------------------------------------
+//public:
+//	unsigned int trackId;
+//	bool bActionDetect;
+//
+//};
+
+
+
+
 
 }
