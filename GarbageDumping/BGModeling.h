@@ -33,7 +33,7 @@ class CProbModel
 
 public:
 
-	IplImage	*m_Cur;
+	Mat	m_Cur;
 	float		*m_DistImg;
 
 
@@ -70,10 +70,10 @@ public:
 	CProbModel(void);
 	~CProbModel(void);
 	void uninit(void);
-	void init(IplImage *pInputImg, int MCD_MODE);
+	void init(Mat pInputImg, int MCD_MODE);
 	void motionCompensate(float h[9], int frame_num, float s, bool bInit);
-	void update(IplImage *pOutputImg, IplImage *ROI, int frame_num, float s, bool bInit);
-	void update_vibe(IplImage *pOutputImg, IplImage *AGE, IplImage *FGS, int nFrame, float fZero_ratio);
+	void update(Mat pOutputImg, Mat ROI, int frame_num, float s, bool bInit);
+	void update_vibe(Mat pOutputImg, Mat AGE, Mat FGS, int nFrame, float fZero_ratio);
 	void run(Mat curFrame, bool bMoving);
 
 };

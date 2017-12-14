@@ -353,7 +353,7 @@ void CActionClassifier::Visualize(hj::CTrackResult *_curTrackResult)
 	//}
 
 	cv::namedWindow(strVisWindowName_);
-	cv::moveWindow(strVisWindowName_, 10, 400);
+
 	cv::imshow(strVisWindowName_, matDetectResult_);
 	cv::waitKey(1);
 	matDetectResult_.release();

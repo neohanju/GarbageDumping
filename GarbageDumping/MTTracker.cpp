@@ -1195,7 +1195,7 @@ void CMTTracker::VisualizeResult()
 	}
 
 	cv::namedWindow(strVisWindowName_);
-	cv::moveWindow(strVisWindowName_, 10, 10);
+
 	cv::imshow(strVisWindowName_, matTrackingResult_);
 	cv::waitKey(1);
 	matTrackingResult_.release();

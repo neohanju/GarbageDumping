@@ -21,14 +21,15 @@ void CProbModel::uninit(void)
 
 }
 
-void CProbModel::init(IplImage *pInputImg, int MCD_MODE)
+void CProbModel::init(Mat pInputImg, int MCD_MODE)
 {
 	uninit();
 
 	m_Cur = pInputImg;
+	
 
-	obsWidth = pInputImg->width;
-	obsHeight = pInputImg->height;
+	obsWidth = pInputImg.cols;
+	obsHeight = pInputImg.rows;
 
 	modelWidth = obsWidth / BLOCK_SIZE_X;
 	modelHeight = obsHeight / BLOCK_SIZE_Y;
@@ -67,23 +68,20 @@ void CProbModel::init(IplImage *pInputImg, int MCD_MODE)
 	//		update(NULL, NULL);
 
 
-	Mat matImg = cvarrToMat(m_Cur);
-	Scalar MM = mean(matImg);
+
+	Scalar MM = mean(m_Cur);
 	m_bgMean = MM.val[0];
 
 	nMargin = 0;
 
-
-
-	Mat mat_Cur = cvarrToMat(pInputImg);
 
 	if (MCD_MODE == 1)
 	{
 		// ViBE samples initializer. 
 		for (int j = 0; j < 20; j++)
 		{
-			mat_Cur.copyTo(m_Samples[j]);
-			mat_Cur.copyTo(m_Samples_temp[j]);
+			m_Cur.copyTo(m_Samples[j]);
+			m_Cur.copyTo(m_Samples_temp[j]);
 		}
 	}
 
@@ -119,12 +117,12 @@ void CProbModel::motionCompensate(float h[9], int frame_num, float s, bool bInit
 	int curModelHeight = modelHeight;
 
 
-	unsigned char* pCur = (unsigned char*)m_Cur->imageData;
+	unsigned char* pCur = (unsigned char*)(m_Cur.data);
 
 
 	
 
-	int obsWidthStep = m_Cur->widthStep;
+	int obsWidthStep = m_Cur.cols;
 
 	// compensate models for the current view
 	for (int j = 0; j < curModelHeight; ++j){
@@ -513,7 +511,7 @@ void CProbModel::motionCompensate(float h[9], int frame_num, float s, bool bInit
 
 
 
-void CProbModel::update(IplImage *pOutputImg, IplImage *ROI, int frame_num, float s, bool bInit)
+void CProbModel::update(Mat pOutputImg, Mat ROI, int frame_num, float s, bool bInit)
 {
 
 
@@ -521,9 +519,10 @@ void CProbModel::update(IplImage *pOutputImg, IplImage *ROI, int frame_num, floa
 
 
 	unsigned char* pOut;
-	if (pOutputImg != NULL){
-		cvSet(pOutputImg, CV_RGB(0, 0, 0));
-		pOut = (unsigned char*)pOutputImg->imageData;
+	if (!pOutputImg.empty())
+	{
+		pOutputImg = Mat::zeros(obsWidth, obsHeight, CV_8UC1);
+		pOut = (unsigned char*)(pOutputImg.data);
 	}
 
 
@@ -531,8 +530,8 @@ void CProbModel::update(IplImage *pOutputImg, IplImage *ROI, int frame_num, floa
 	int curModelHeight = modelHeight;
 
 
-	unsigned char* pCur = (unsigned char*)m_Cur->imageData;
-	unsigned char* pROI = (unsigned char*)ROI->imageData;
+	unsigned char* pCur = (unsigned char*)(m_Cur.data);
+	unsigned char* pROI = (unsigned char*)(ROI.data);
 
 	//int margin = nMargin / BLOCK_SIZE;
 	int margin = 0;
@@ -556,8 +555,8 @@ void CProbModel::update(IplImage *pOutputImg, IplImage *ROI, int frame_num, floa
 
 	//////////////////////////////////////////////////////////////////////////
 	// 141117. Check the illumination change.
-	Mat cur_img = cvarrToMat(m_Cur);
-	Scalar curMM = mean(cur_img);
+
+	Scalar curMM = mean(m_Cur);
 	float cur_mean_R = curMM.val[0];
 	float cur_mean_G = curMM.val[1];
 	float cur_mean_B = curMM.val[2];
@@ -977,7 +976,7 @@ void CProbModel::update(IplImage *pOutputImg, IplImage *ROI, int frame_num, floa
 
 	//				m_DistImg[idx_i + idx_j*obsWidthStep] = pow(pCur[idx_i + idx_j*obsWidthStep] - m_Mean[0][bIdx_i + bIdx_j*modelWidth], (int)2);
 
-					if (pOutputImg != NULL && pAge_tmp_0[bIdx_i + bIdx_j*modelWidth] > 1)
+					if (!pOutputImg.empty() && pAge_tmp_0[bIdx_i + bIdx_j*modelWidth] > 1)
 					{
 
 						//unsigned char valOut = diff_avg > VAR_THRESH_FG_DETERMINE * pVar_0[bIdx_i + bIdx_j*modelWidth] ? 255 : 0;
@@ -1054,18 +1053,19 @@ void CProbModel::update(IplImage *pOutputImg, IplImage *ROI, int frame_num, floa
 }
 
 
-void CProbModel::update_vibe(IplImage *pOutputImg, IplImage *AGE, IplImage *FGS, int nFrame, float fZero_ratio)
+void CProbModel::update_vibe(Mat pOutputImg, Mat AGE, Mat FGS, int nFrame, float fZero_ratio)
 {
 	// if fZero_ratio is negative, motion compensation module is off...
 
 
 
 	unsigned char* pOut;
-	if (pOutputImg != NULL){
+	if (!pOutputImg.empty())
+	{
 	//	cvSet(pOutputImg, CV_RGB(128, 128, 128)); // modify the Vibe initial values... 
 
-		cvSet(pOutputImg, CV_RGB(0, 0, 0));
-		pOut = (unsigned char*)pOutputImg->imageData;
+//		pOutputImg = Mat::zeros(obsWidth, obsHeight, CV_8UC1);
+		pOut = (unsigned char*)(pOutputImg.data);
 	}
 
 
@@ -1073,7 +1073,8 @@ void CProbModel::update_vibe(IplImage *pOutputImg, IplImage *AGE, IplImage *FGS,
 
 	// 170425. Auto exposure control
 	// 141117. Check the illumination change.
-	Mat cur_img = cvarrToMat(m_Cur);
+	Mat cur_img;
+	m_Cur.copyTo(cur_img);
 	cur_img.convertTo(cur_img, CV_32F);
 
 
@@ -1090,8 +1091,8 @@ void CProbModel::update_vibe(IplImage *pOutputImg, IplImage *AGE, IplImage *FGS,
 	}*/
 
 
-	unsigned char* pCur = (unsigned char*)m_Cur->imageData;
-	float* pAge = (float*)AGE->imageData; // Age map
+	unsigned char* pCur = (unsigned char*)(m_Cur.data);
+	float* pAge = (float*)(AGE.data); // Age map
 	//float* pFGS = (float*)FGS->imageData; // Foreground speed after homography 
 
 	Mat dist_map = Mat::zeros(obsHeight, obsWidth, CV_32F);
@@ -1099,11 +1100,11 @@ void CProbModel::update_vibe(IplImage *pOutputImg, IplImage *AGE, IplImage *FGS,
 
 
 
-	int obsWidthStep = m_Cur->widthStep;
+	int obsWidthStep = m_Cur.cols;
 	int roi_idx;
 
 
-	Mat mat_Cur = cvarrToMat(m_Cur);
+//	Mat mat_Cur = cvarrToMat(m_Cur);
 
 
 	// ViBE parameter : default for fixed camera. 
@@ -1165,14 +1166,14 @@ void CProbModel::update_vibe(IplImage *pOutputImg, IplImage *AGE, IplImage *FGS,
 	{
 		for (int m = 0; m < 20; m++)
 		{
-			mat_Cur.copyTo(m_Samples[m]);
+			m_Cur.copyTo(m_Samples[m]);
 		}
 	
 	}
 
 
 	if (fZero_ratio < 0 && nFrame < 20) // when motion compensation is off.
-			mat_Cur.copyTo(m_Samples[nFrame]);
+		m_Cur.copyTo(m_Samples[nFrame]);
 
 
 	else
@@ -1193,10 +1194,10 @@ void CProbModel::update_vibe(IplImage *pOutputImg, IplImage *AGE, IplImage *FGS,
 		// Convert back to CV_8UC3 type, applying the division to get the actual mean
 		BGMean.convertTo(BGMean, CV_32F, 1. / 20);
 
-		Mat BGMean_disp;
-		BGMean.convertTo(BGMean_disp, CV_8U);
-		imshow("BG_10", m_Samples[10]); // display 10-th bg image
-		imshow("BG_mean", BGMean_disp); // display bg mean
+		//Mat BGMean_disp;
+		//BGMean.convertTo(BGMean_disp, CV_8U);
+		//imshow("BG_10", m_Samples[10]); // display 10-th bg image
+		//imshow("BG_mean", BGMean_disp); // display bg mean
 
 
 		Mat BGVar(m_Samples[0].rows, m_Samples[0].cols, CV_32FC3);
@@ -1208,11 +1209,11 @@ void CProbModel::update_vibe(IplImage *pOutputImg, IplImage *AGE, IplImage *FGS,
 			BGVar += abs(BGMean - BGtmp);
 		}
 
-		BGVar.convertTo(BGVar, CV_32F, 1. / 20);
+		//BGVar.convertTo(BGVar, CV_32F, 1. / 20);
 
-		Mat BGVar_disp;
-		BGVar.convertTo(BGVar_disp, CV_8U);
-		imshow("BG_Var", BGVar_disp); // display bg mean
+		//Mat BGVar_disp;
+		//BGVar.convertTo(BGVar_disp, CV_8U);
+		//imshow("BG_Var", BGVar_disp); // display bg mean
 
 
 

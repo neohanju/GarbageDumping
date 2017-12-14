@@ -32,14 +32,35 @@
 using namespace cv;
 
 
+
+/////////////////////////////////////////////////////////////////////////
+// POSE CLASSIFICATION RESULT (OF ENTIRE TARGETS)
+/////////////////////////////////////////////////////////////////////////
+
+
+
 class CThrowDetector 
 {
 
 public: 
+	// ID.
+	unsigned int trackId;
+	
+	// State
+	bool bCarrying;
+
+
+	// KCF 
 	float m_fDist_mean[18];
 	float m_fDist_std[18];
+
+	// Share
 	float m_fDist_mean_obs[18];
 	float m_fDist_std_obs[18];
+
+	// MASK
+	float m_fDist_mean_mask[18];
+	float m_fDist_std_mask[18];
 
 	Point2d m_ROI_LT;
 	Point2d m_ROI_RB;
@@ -47,33 +68,25 @@ public:
 	bool m_bROI = false;
 	bool m_bRHand = true; 
 
-	// For visualize matrix...
-	Mat m_DispMat;
+	
 
-//	bool m_bTrackInit;
 
-	// Image realted Mat
+
 	Mat m_curFrame;
 	Mat m_fore_up, m_heatmap_up;
-
-	// Road region estimation...
-	Mat m_fg_accum;
-	Mat m_heat_accum;
-	Mat m_mov_ped_accum;
-	Mat m_mov_ped_accum_tmp;
-	Mat m_prev_mov_ped;
+	
 
 	// ID for multiple object
-	int m_ID;
-	bool m_bHandSet;
-	int m_ID_index;
+//	int m_ID_index;
 
 	// Input Keypoints..
 	float _patch_w;
 	float _patch_h;
 	float _LH_x, _LH_y, _LH_c;
 	float _min_fore_area;
-
+	float _arr_joint_x[18];
+	float _arr_joint_y[18];
+	float _arr_joint_c[18];
 
 
 	// KCF Tracker.
@@ -92,9 +105,30 @@ public:
 	int imageHeight;
 
 	bool m_bKCFRectInit;
-	Rect m_KCF_rect_init;
-	Rect m_L_hand;
+	Rect _KCF_rect_init;
 	int m_nReCnt;
+
+	// 171130. 
+	Rect _L_rect;
+	Rect _R_rect;
+	Rect _union_rect;
+	Rect _KCF_rect_L;
+	Rect _KCF_rect_R;
+	int _nHandLR;
+	float _max_BGProb_L;
+	float _max_BGProb_R;
+
+	bool bTrackON;
+
+	// For visualize matrix...
+	Mat m_DispMat; // memory link...
+
+
+	//// 171213. result related.
+	//std::vector<stThrowResult> listThwResult;
+	//CThrowResultSet throwResult_;
+
+
 
 public:
 	CThrowDetector(void);
@@ -103,22 +137,27 @@ public:
 	void init(int width, int height);
 	void ReInit(void);
 	bool run_proposal(Mat curFrame, Mat foreground, Mat Heatmap);
-	bool run_decision(Rect track_box, hj::CTrackResult trackResult);
+	bool run_decision(Rect track_box, bool bMode);
 
 	void set_ROI(int LT_x, int LT_y, int RB_x, int RB_y);
 	void set_LHand(void);
-	void Visualize_ROI(void);
-	void carryingObjectProposal();
-	void FindCarryingObject(Rect region_rect, int min_fore_area, float th_heat_m);
+
+	void carryingObjectProposal(Rect hand_rect, bool bHand, bool bTrackON);
+	
+	void FindCarryingObject(Rect region_rect, int min_fore_area, float th_heat_m, bool bHand, bool bTrackON);
+	
 	float MeasureJointBgProb(Rect region_rect);
 	bool KCF_ReInit(Rect track_box);
-	void Visualize(bool bROI_, bool bThw1, bool bThw2);
 
 	void set_keypoints(hj::CTrackResult trackResult, int idx);
+	void set_keypoints_obj(hj::CObjectInfo objectInfo);
 
-	bool Detect(hj::CTrackResult trackResult, int idx, Mat matCurFrame, Mat m_fg_map, Mat Heatmap);
+	bool Detect(Mat matCurFrame, Mat m_fg_map, Mat Heatmap, Mat matDisp);
 
-	void region_accumulate(Mat mat_fg, Mat mat_heat);
 
+	void InitKCFRect();
+
+//	void Run(hj::CTrackResult trackResult, Mat matCurFrame, Mat m_fg_map, Mat Heatmap, Mat matDisp);
 
 };
+
