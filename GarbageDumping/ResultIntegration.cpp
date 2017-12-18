@@ -3,18 +3,18 @@
 
 
 
-ResultIntegration::ResultIntegration()
+CResultIntegration::CResultIntegration()
 	:bInit_(false)
 {
 }
 
 
-ResultIntegration::~ResultIntegration()
+CResultIntegration::~CResultIntegration()
 {
 	Finalize();
 }
 
-void ResultIntegration::Initialize()
+void CResultIntegration::Initialize()
 {
 	if (bInit_) { Finalize(); }
 
@@ -27,7 +27,7 @@ void ResultIntegration::Initialize()
 
 }
 
-void ResultIntegration::Finalize()
+void CResultIntegration::Finalize()
 {
 	if (!bInit_) { return; }
 
@@ -35,4 +35,9 @@ void ResultIntegration::Finalize()
 
 	/* visualize related */
 	if (bVisualizeResult_) { cv::destroyWindow(strVisWindowName_); }
+}
+
+void CResultIntegration::Run()
+{
+
 }

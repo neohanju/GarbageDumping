@@ -16,17 +16,18 @@ struct stParamResult
 	bool bVisualize;
 };
 
-class ResultIntegration
+class CResultIntegration
 {
 	//----------------------------------------------------------------
 	// METHODS
 	//---------------------------------------------------------------
 public:
-	ResultIntegration();
-	~ResultIntegration();
+	CResultIntegration();
+	~CResultIntegration();
 
 	void Initialize();
 	void Finalize();
+	void Run();
 
 	//------------------------------------------------
 	// VARIABLES

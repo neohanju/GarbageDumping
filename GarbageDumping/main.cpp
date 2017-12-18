@@ -87,14 +87,14 @@
 #include "ThrowDetectorSet.h"
 
 
-#define KEYPOINTS_BASE_PATH ("D:\\dataset\\pose_text")
-#define VIDEO_BASE_PATH ("D:\\dataset\\dump_num")
+#define KEYPOINTS_BASE_PATH ("D:\\workspace\\data\\etri_tracking_data\\pose_text")
+#define VIDEO_BASE_PATH ("D:\\workspace\\data\\etri_tracking_data")
 #define RESULT_PATH ("D:\\Result\\GarbageDumpingResult")
 //#define HEATMAP_PATH ("D:\\dataset\\outputs_PAF")
 #define HEATMAP_PATH ("../output_heatmaps")
 #define TRAINED_MODEL_PATH ("../model")
 
-#define TARGET_VIDEO ("184") // for staying: 165. start from 165.
+#define TARGET_VIDEO ("172") // for staying: 165. start from 165.
 #define START_FRAME_INDEX (0)
 #define END_FRAME_INDEX (-1)
 
@@ -258,14 +258,19 @@ int main(int argc, char** argv)
 	}
 
 
-
+	//---------------------------------------------------
 	// Action Classification Init
+	//---------------------------------------------------
 	jm::stParamAction actionParams;
 	jm::CActionClassifier cClassifier;
 	std::string strModelPath = std::string(TRAINED_MODEL_PATH) + "\\" + "train.xml";
 	cClassifier.Initialize(actionParams, strModelPath);
-
 	jm::CActionResultSet actionResult;
+
+
+	//---------------------------------------------------
+	// Final Result Init
+	//---------------------------------------------------
 
 
 
