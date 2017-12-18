@@ -20,11 +20,11 @@ void CActionClassifier::Initialize(stParamAction &_stParam, std::string _strMode
 {
 	if (bInit_) { Finalize(); }
 
-	stParam_ = _stParam;
+	stActionParam_ = _stParam;
 	bInit_ = true;
 
 	// visualization related
-	bVisualizeResult_ = stParam_.bVisualize;
+	bVisualizeResult_ = stActionParam_.bVisualize;
 	strVisWindowName_ = "Detection result";
 
 	//SVM related
@@ -170,7 +170,7 @@ void CActionClassifier::UpdatePoseletUsingTrack()
 	//------------------------------------------------
 	for (std::deque<CPoselet*>::iterator poseIter = newPendingPoselets.begin(); poseIter != newPendingPoselets.end();)
 	{
-		if ((*poseIter)->nEndFrame + stParam_.nMaxPendingFrame < nCurrentFrameIdx_)
+		if ((*poseIter)->nEndFrame + stActionParam_.nMaxPendingFrame < nCurrentFrameIdx_)
 		{
 			poseIter = newPendingPoselets.erase(poseIter);
 			continue;
@@ -196,7 +196,7 @@ void CActionClassifier::Detect(std::deque<CPoselet*> _activePoselets, hj::CTrack
 		curActionResult.trackId = (*poseletIter)->id;
 
 		//30frame 채워지지 않았다면 이전 Frame의 결과를 받아오기
-		if ((*poseletIter)->vectorObjInfo.size() < stParam_.nPoseLength) 
+		if ((*poseletIter)->vectorObjInfo.size() < stActionParam_.nPoseLength)
 		{
 			for (std::vector<stActionResult>::iterator prevResultIter = actionResult_.actionResults.begin();
 				prevResultIter != actionResult_.actionResults.end(); prevResultIter++)
@@ -256,10 +256,10 @@ void CActionClassifier::EliminationStepSize()
 	for (std::deque<CPoselet*>::iterator poseletIter = activePoselets_.begin();
 		poseletIter != activePoselets_.end(); poseletIter++)
 	{
-		if ((*poseletIter)->vectorObjInfo.size() < stParam_.nPoseLength) { continue; }
+		if ((*poseletIter)->vectorObjInfo.size() < stActionParam_.nPoseLength) { continue; }
 
 		//elimination front step size object info.
-		for (int poseIdx = 0; poseIdx < stParam_.nStepSize; poseIdx++)
+		for (int poseIdx = 0; poseIdx < stActionParam_.nStepSize; poseIdx++)
 		{
 			(*poseletIter)->vectorObjInfo.pop_front();
 			(*poseletIter)->nStartFrame++;

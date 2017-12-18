@@ -5,7 +5,8 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2\ml.hpp>
 
-#include "haanju_utils.hpp"
+//#include "haanju_utils.hpp"
+#include "MTTracker.h"
 
 namespace jm
 {
@@ -123,7 +124,7 @@ namespace jm
 
 	public:
 		bool             bInit_;
-		stParamAction    stParam_;
+		stParamAction    stActionParam_;
 		unsigned int     nCurrentFrameIdx_;
 		hj::CTrackResult curTrackResult_;         //있어야 하나? 없어도 될듯!
 

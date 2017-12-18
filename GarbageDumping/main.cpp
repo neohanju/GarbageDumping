@@ -80,6 +80,7 @@
 #include "opencv2/highgui/highgui.hpp"
 #include "MTTracker.h"
 #include "ActionClassifier.h"
+#include "ResultIntegration.h"
 
 
 #include "kcftracker.hpp"
@@ -271,7 +272,9 @@ int main(int argc, char** argv)
 	//---------------------------------------------------
 	// Final Result Init
 	//---------------------------------------------------
-
+	stParamResult resultParams;
+	CResultIntegration cResult;
+	cResult.Initialize(resultParams);
 
 
 	// Throw Detector Set Initialize...

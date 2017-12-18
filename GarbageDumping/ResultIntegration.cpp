@@ -1,7 +1,8 @@
 #include "ResultIntegration.h"
 #include <opencv2/imgproc/imgproc.hpp>
 
-
+namespace jm
+{
 
 CResultIntegration::CResultIntegration()
 	:bInit_(false)
@@ -14,12 +15,13 @@ CResultIntegration::~CResultIntegration()
 	Finalize();
 }
 
-void CResultIntegration::Initialize()
+void CResultIntegration::Initialize(stParamResult &_stParam)
 {
 	if (bInit_) { Finalize(); }
 
-	//stParam_ = _stParam;
+	stResultParam_ = _stParam;
 	bInit_ = true;
+
 
 	// visualization related
 	//bVisualizeResult_ = stParam_.bVisualize;
@@ -37,7 +39,14 @@ void CResultIntegration::Finalize()
 	if (bVisualizeResult_) { cv::destroyWindow(strVisWindowName_); }
 }
 
-void CResultIntegration::Run()
+void CResultIntegration::Run(hj::CTrackResult _trackResult, jm::CActionResultSet _actionResult)
 {
+	if (stResultParam_.bVisualize) { Visualize(); }
+}
+
+void CResultIntegration::Visualize()
+{
+
+}
 
 }
