@@ -88,14 +88,14 @@
 #include "ThrowDetectorSet.h"
 
 
-#define KEYPOINTS_BASE_PATH ("D:\\workspace\\data\\etri_tracking_data\\pose_text")
-#define VIDEO_BASE_PATH ("D:\\workspace\\data\\etri_tracking_data")
+#define KEYPOINTS_BASE_PATH ("D:\\dataset\\pose_text")
+#define VIDEO_BASE_PATH ("D:\\dataset\\dump_num")
 #define RESULT_PATH ("D:\\Result\\GarbageDumpingResult")
 //#define HEATMAP_PATH ("D:\\dataset\\outputs_PAF")
 #define HEATMAP_PATH ("../output_heatmaps")
 #define TRAINED_MODEL_PATH ("../model")
 
-#define TARGET_VIDEO ("172") // for staying: 165. start from 165.
+#define TARGET_VIDEO ("184") // for staying: 165. start from 165.
 #define START_FRAME_INDEX (0)
 #define END_FRAME_INDEX (-1)
 
@@ -272,9 +272,10 @@ int main(int argc, char** argv)
 	//---------------------------------------------------
 	// Final Result Init
 	//---------------------------------------------------
-	stParamResult resultParams;
-	CResultIntegration cResult;
+	jm::stParamResult resultParams;
+	jm::CResultIntegration cResult;
 	cResult.Initialize(resultParams);
+	jm::CDetectResultSet integrateResult;
 
 
 	// Throw Detector Set Initialize...
@@ -350,14 +351,18 @@ int main(int argc, char** argv)
 
 
 
-
+		//if (102 == fIdx)
+		//{
+		//	int a = 0;
+		//}
 
 
 		//Action Classification
-		
 		actionResult = cClassifier.Run(&trackResult, matCurFrame, fIdx);        //model path (?)
 
-		
+
+		//Result Integration
+		integrateResult = cResult.Run(&trackResult, &actionResult, matCurFrame, fIdx);
 	}
 
 	

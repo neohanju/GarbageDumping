@@ -271,9 +271,9 @@ void CActionClassifier::EliminationStepSize()
 
 
 // when input action vector 
-CActionResultSet CActionClassifier::Run(hj::CTrackResult *_curTrackResult, cv::Mat _curFrame, int frameIdx)
+CActionResultSet CActionClassifier::Run(hj::CTrackResult *_curTrackResult, cv::Mat _curFrame, int _frameIdx)
 {
-	nCurrentFrameIdx_ = frameIdx;
+	nCurrentFrameIdx_ = _frameIdx;
 	matDetectResult_ = _curFrame.clone();
 	curTrackResult_ = *_curTrackResult;
 	UpdatePoseletUsingTrack();
