@@ -2,6 +2,7 @@
 #include <opencv2/highgui/highgui.hpp>
 
 #include "ActionClassifier.h"
+#include "ThrowDetectorSet.h"
 
 namespace jm
 {
@@ -29,7 +30,7 @@ struct stDetectResult
 
 	unsigned int trackId;
 	bool bActionDetect;
-	//bool bThrowDetect;
+	bool bThrowDetect;
 
 	cv::Rect2d   box;
 	cv::Rect2d   headBox;
@@ -70,11 +71,11 @@ public:
 
 	void Initialize(stParamResult &stParams_);
 	void Finalize();
-	CDetectResultSet Run(hj::CTrackResult *_trackResult, jm::CActionResultSet *_actionResult, cv::Mat _curFrame, int _frameIdx);
+	CDetectResultSet Run(hj::CTrackResult *_trackResult, CThrowDetectorSet *_throwResult, jm::CActionResultSet *_actionResult, cv::Mat _curFrame, int _frameIdx);
 
 private:
 
-	void Integrate(hj::CTrackResult *_trackResult, jm::CActionResultSet *_actionResult);
+	void Integrate(/*hj::CTrackResult *_trackResult, jm::CActionResultSet *_actionResult*/);
 	void Visualize();
 	void DrawBoxWithID( cv::Mat &imageFrame, cv::Rect box, unsigned int nID, int lineStyle, int fontSize, cv::Scalar curColor);
 	cv::Scalar getColorByID(unsigned int nID, std::vector<cv::Scalar> *vecColors);
@@ -98,9 +99,10 @@ public:
 	std::vector<cv::Scalar> vecColors_;
 
 
-	CDetectResultSet integratedResult_;
-	hj::CTrackResult curTrackResult_;
-	CActionResultSet curActionResult_;
+	CDetectResultSet  integratedResult_;
+	hj::CTrackResult  curTrackResult_;
+	CActionResultSet  curActionResult_;
+	CThrowDetectorSet curThrowResult_;
 
 	//hj::CTrackResult     curTrackResult_;         //있어야 하나? 없어도 될듯!
 	//jm::CActionResultSet curActionResult_;

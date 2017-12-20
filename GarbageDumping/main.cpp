@@ -95,7 +95,7 @@
 #define HEATMAP_PATH ("../output_heatmaps")
 #define TRAINED_MODEL_PATH ("../model")
 
-#define TARGET_VIDEO ("184") // for staying: 165. start from 165.
+#define TARGET_VIDEO ("172") // for staying: 165. start from 165.
 #define START_FRAME_INDEX (0)
 #define END_FRAME_INDEX (-1)
 
@@ -350,19 +350,12 @@ int main(int argc, char** argv)
 
 
 
-
-		//if (102 == fIdx)
-		//{
-		//	int a = 0;
-		//}
-
-
 		//Action Classification
 		actionResult = cClassifier.Run(&trackResult, matCurFrame, fIdx);        //model path (?)
 
 
 		//Result Integration
-		integrateResult = cResult.Run(&trackResult, &actionResult, matCurFrame, fIdx);
+		integrateResult = cResult.Run(&trackResult, &cThwDetectorSet, &actionResult, matCurFrame, fIdx);
 	}
 
 	

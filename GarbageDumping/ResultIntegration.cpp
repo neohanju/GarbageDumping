@@ -45,15 +45,21 @@ void CResultIntegration::Finalize()
 	if (bVisualizeResult_) { cv::destroyWindow(strVisWindowName_); }
 }
 
-CDetectResultSet CResultIntegration::Run(hj::CTrackResult *_trackResult, jm::CActionResultSet *_actionResult, cv::Mat _curFrame, int _frameIdx)
+CDetectResultSet CResultIntegration::Run(hj::CTrackResult *_trackResult, 
+	CThrowDetectorSet *_throwResult,
+	jm::CActionResultSet *_actionResult, 
+	cv::Mat _curFrame, 
+	int _frameIdx)
 {
 	nCurrentFrameIdx_ = _frameIdx;
 	matResult_ = _curFrame.clone();
 
+	/* save result to member variable */
 	curTrackResult_ = *_trackResult;
 	curActionResult_ = *_actionResult;
+	curThrowResult_ = *_throwResult;
 
-	Integrate(_trackResult, _actionResult);
+	Integrate(/*_trackResult, _actionResult*/);
 
 	if (bVisualizeResult_) { Visualize(); }
 
@@ -61,15 +67,17 @@ CDetectResultSet CResultIntegration::Run(hj::CTrackResult *_trackResult, jm::CAc
 }
 
 
-void CResultIntegration::Integrate(hj::CTrackResult *_trackResult, jm::CActionResultSet *_actionResult)
+void CResultIntegration::Integrate(/*hj::CTrackResult *_trackResult, jm::CActionResultSet *_actionResult*/)
 {
-	assert(_trackResult->objectInfos.size() == _actionResult->actionResults.size());
+	assert(curTrackResult_.objectInfos.size() == curActionResult_.actionResults.size());
+	//assert(curTrackResult_.objectInfos.size() == curThrowResult_.listThrowResult.size());
 	
 	integratedResult_.detectResults.clear();                     // 이부분 다르게 수정할 방법은?
 	integratedResult_.frameIdx = this->nCurrentFrameIdx_;
 
-	for (std::vector<hj::CObjectInfo>::iterator objIter = _trackResult->objectInfos.begin();
-		objIter != _trackResult->objectInfos.end(); objIter++)
+	
+	for (std::vector<hj::CObjectInfo>::iterator objIter = curTrackResult_.objectInfos.begin();
+		objIter != curTrackResult_.objectInfos.end(); objIter++)
 	{
 
 		//stDetectResult *curDetectResult;   //이거 왜 에러나지(?) 생각해보기
@@ -80,15 +88,24 @@ void CResultIntegration::Integrate(hj::CTrackResult *_trackResult, jm::CActionRe
 		curDetectResult.box = objIter->box;
 		curDetectResult.headBox = objIter->headBox;
 
-		for (std::vector<stActionResult>::iterator actionIter = _actionResult->actionResults.begin();
-			actionIter != _actionResult->actionResults.end(); actionIter++)
+		for (std::vector<stActionResult>::iterator actionIter = curActionResult_.actionResults.begin();
+			actionIter != curActionResult_.actionResults.end(); actionIter++)
 		{
 			if (objIter->id != actionIter->trackId) { continue; }
 
 			curDetectResult.bActionDetect = actionIter->bActionDetect;
 		}
-
+/*
+		for (std::vector<CThrowDetector>::iterator throwIter = curThrowResult_.listThrowResult.begin();
+			throwIter != curThrowResult_.listThrowResult.end(); throwIter++)
+		{
+			if (objIter->id != throwIter->trackId) { continue; }
+			
+			curDetectResult.bThrowDetect = 
+		}
+*/
 		//TODO: Throw Detect
+
 
 
 		integratedResult_.detectResults.push_back(curDetectResult);
