@@ -1,6 +1,8 @@
 #include "ResultIntegration.h"
 #include <opencv2/imgproc/imgproc.hpp>
 
+
+
 namespace jm
 {
 
@@ -26,6 +28,10 @@ void CResultIntegration::Initialize(stParamResult &_stParam)
 	// visualization related
 	bVisualizeResult_ = stResultParam_.bVisualize;
 	strVisWindowName_ = "Final result";
+	if (bVisualizeResult_)
+	{
+		vecColors_ = GenerateColors(400);
+	}
 
 }
 
@@ -44,8 +50,8 @@ CDetectResultSet CResultIntegration::Run(hj::CTrackResult *_trackResult, jm::CAc
 	nCurrentFrameIdx_ = _frameIdx;
 	matResult_ = _curFrame.clone();
 
-	//curTrackResult_ = *_trackResult;
-	//curActionResult_ = *_actionResult;
+	curTrackResult_ = *_trackResult;
+	curActionResult_ = *_actionResult;
 
 	Integrate(_trackResult, _actionResult);
 
@@ -101,6 +107,8 @@ void CResultIntegration::Visualize()
 	cv::putText(matResult_, strFrameInfo, cv::Point(6, 20), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(255, 255, 255));
 
 	//TODO: Track result도 표시되어야 하고, detection result도 표시되어야 한다.( 현재 detection만 출력된다.)
+
+	/*SVM Result*/
 	for (std::vector<stDetectResult>::iterator resultIter = integratedResult_.detectResults.begin();
 		resultIter != integratedResult_.detectResults.end(); resultIter++)
 	{
@@ -110,13 +118,30 @@ void CResultIntegration::Visualize()
 		cv::rectangle(
 			matResult_,
 			resultIter->box,
-			//_curTrackResult->objectInfos.at(index).box,
-			cv::Scalar(0, 0, 255), 1);
+			cv::Scalar(0, 0, 255), 3);
 
 		char strDetectResult[100];
 		sprintf_s(strDetectResult, "Throwing Detected(%d person)", resultIter->trackId);
 		cv::putText(matResult_, strDetectResult, cv::Point(10, 200), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 0, 255), 2);
 
+	}
+
+	/*Track Result*/
+	for (std::vector<hj::CObjectInfo>::iterator trackIter = curTrackResult_.objectInfos.begin();
+		trackIter != curTrackResult_.objectInfos.end(); trackIter++)
+	{
+		DrawBoxWithID(
+			matResult_,
+			trackIter->box,
+			trackIter->id,
+			0,
+			0,
+			getColorByID(trackIter->id, &vecColors_));
+
+		cv::rectangle(
+			matResult_,
+			trackIter->headBox,
+			cv::Scalar(0, 0, 255), 1);
 	}
 
 
@@ -135,6 +160,84 @@ void CResultIntegration::Visualize()
 	cv::imshow(strVisWindowName_, matResult_);
 	cv::waitKey(1);
 	matResult_.release();
+}
+
+// 이 함수를 어떻게 없애지... Track에서 받아오는게 좋을듯 한데..(재정의)
+void CResultIntegration::DrawBoxWithID(
+	cv::Mat &imageFrame,
+	cv::Rect box,
+	unsigned int nID,
+	int lineStyle,
+	int fontSize,
+	cv::Scalar curColor)
+{
+	// get label length
+	unsigned int labelLength = nID > 0 ? 0 : 1;
+	unsigned int tempLabel = nID;
+	while (tempLabel > 0)
+	{
+		tempLabel /= 10;
+		labelLength++;
+	}
+	if (0 == fontSize)
+	{
+		cv::rectangle(imageFrame, box, curColor, 1);
+		cv::rectangle(imageFrame, cv::Rect((int)box.x, (int)box.y - 10, 7 * labelLength, 14), curColor, CV_FILLED);
+		cv::putText(imageFrame, std::to_string(nID), cv::Point((int)box.x, (int)box.y - 1), cv::FONT_HERSHEY_SIMPLEX, 0.3, cv::Scalar(0, 0, 0));
+	}
+	else
+	{
+		cv::rectangle(imageFrame, box, curColor, 1 + lineStyle);
+		cv::putText(imageFrame, std::to_string(nID), cv::Point((int)box.x, (int)box.y + 40), cv::FONT_HERSHEY_SIMPLEX, 0.5, curColor);
+	}
+}
+
+
+cv::Scalar CResultIntegration::getColorByID(unsigned int nID, std::vector<cv::Scalar> *vecColors)
+{
+	if (NULL == vecColors) { return cv::Scalar(255, 255, 255); }
+	unsigned int colorIdx = nID % vecColors->size();
+	return (*vecColors)[colorIdx];
+}
+
+std::vector<cv::Scalar> CResultIntegration::GenerateColors(unsigned int numColor)
+{
+	double golden_ratio_conjugate = 0.618033988749895;
+	//double hVal = (double)std::rand()/(INT_MAX);
+	double hVal = 0.0;
+	std::vector<cv::Scalar> resultColors;
+	resultColors.reserve(numColor);
+	for (unsigned int colorIdx = 0; colorIdx < numColor; colorIdx++)
+	{
+		hVal += golden_ratio_conjugate;
+		hVal = std::fmod(hVal, 1.0);
+		resultColors.push_back(hsv2rgb(hVal, 0.5, 0.95));
+	}
+	return resultColors;
+}
+
+
+cv::Scalar CResultIntegration::hsv2rgb(double h, double s, double v)
+{
+	int h_i = (int)(h * 6);
+	double f = h * 6 - (double)h_i;
+	double p = v * (1 - s);
+	double q = v * (1 - f * s);
+	double t = v * (1 - (1 - f) * s);
+	double r, g, b;
+	switch (h_i)
+	{
+	case 0: r = v; g = t; b = p; break;
+	case 1: r = q; g = v; b = p; break;
+	case 2: r = p; g = v; b = t; break;
+	case 3: r = p; g = q; b = v; break;
+	case 4: r = t; g = p; b = v; break;
+	case 5: r = v; g = p; b = q; break;
+	default:
+		break;
+	}
+
+	return cv::Scalar((int)(r * 255), (int)(g * 255), (int)(b * 255));
 }
 
 }
