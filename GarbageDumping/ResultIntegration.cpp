@@ -46,7 +46,7 @@ void CResultIntegration::Finalize()
 }
 
 CDetectResultSet CResultIntegration::Run(hj::CTrackResult *_trackResult, 
-	CThrowDetectorSet *_throwResult,
+	CThrownResultSet *_throwResult,
 	jm::CActionResultSet *_actionResult, 
 	cv::Mat _curFrame, 
 	int _frameIdx)
@@ -70,7 +70,7 @@ CDetectResultSet CResultIntegration::Run(hj::CTrackResult *_trackResult,
 void CResultIntegration::Integrate(/*hj::CTrackResult *_trackResult, jm::CActionResultSet *_actionResult*/)
 {
 	assert(curTrackResult_.objectInfos.size() == curActionResult_.actionResults.size());
-	//assert(curTrackResult_.objectInfos.size() == curThrowResult_.listThrowResult.size());
+	assert(curTrackResult_.objectInfos.size() == curThrowResult_.throwResults.size());
 	
 	integratedResult_.detectResults.clear();                     // 이부분 다르게 수정할 방법은?
 	integratedResult_.frameIdx = this->nCurrentFrameIdx_;
@@ -87,6 +87,17 @@ void CResultIntegration::Integrate(/*hj::CTrackResult *_trackResult, jm::CAction
 		curDetectResult.keyPoint = objIter->keyPoint;
 		curDetectResult.box = objIter->box;
 		curDetectResult.headBox = objIter->headBox;
+		
+		// 두개를 각각 저장하는 방법 외에 한번에 저장하는 방식은 없을까? 
+
+		for (std::vector<CThrowDetector>::iterator throwIter = curThrowResult_.throwResults.begin();
+			throwIter != curThrowResult_.throwResults.end(); throwIter++)
+		{
+			if (objIter->id != throwIter->trackId) { continue; }
+
+			curDetectResult.bKCFDetect  = throwIter->m_bThw_warning;
+			curDetectResult.bMASKDetect = throwIter->m_bThw_warning2;
+		}
 
 		for (std::vector<stActionResult>::iterator actionIter = curActionResult_.actionResults.begin();
 			actionIter != curActionResult_.actionResults.end(); actionIter++)
@@ -95,17 +106,6 @@ void CResultIntegration::Integrate(/*hj::CTrackResult *_trackResult, jm::CAction
 
 			curDetectResult.bActionDetect = actionIter->bActionDetect;
 		}
-/*
-		for (std::vector<CThrowDetector>::iterator throwIter = curThrowResult_.listThrowResult.begin();
-			throwIter != curThrowResult_.listThrowResult.end(); throwIter++)
-		{
-			if (objIter->id != throwIter->trackId) { continue; }
-			
-			curDetectResult.bThrowDetect = 
-		}
-*/
-		//TODO: Throw Detect
-
 
 
 		integratedResult_.detectResults.push_back(curDetectResult);
@@ -129,17 +129,30 @@ void CResultIntegration::Visualize()
 	for (std::vector<stDetectResult>::iterator resultIter = integratedResult_.detectResults.begin();
 		resultIter != integratedResult_.detectResults.end(); resultIter++)
 	{
-		if (!resultIter->bActionDetect) { continue; }
+		if (resultIter->bActionDetect) 
+		{
+			cv::rectangle(
+				matResult_,
+				resultIter->box,
+				cv::Scalar(0, 0, 255), 2);
 
+			char strDetectResult[100];
+			sprintf_s(strDetectResult, "Throwing Detected(%d person)", resultIter->trackId);
+			cv::putText(matResult_, strDetectResult, cv::Point(10, 200), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 0, 255), 2);
+		}
 
-		cv::rectangle(
-			matResult_,
-			resultIter->box,
-			cv::Scalar(0, 0, 255), 3);
+		if (resultIter->bKCFDetect)
+		{
+			cv::rectangle(
+				matResult_,
+				resultIter->box,
+				cv::Scalar(0, 255, 0), 3);
 
-		char strDetectResult[100];
-		sprintf_s(strDetectResult, "Throwing Detected(%d person)", resultIter->trackId);
-		cv::putText(matResult_, strDetectResult, cv::Point(10, 200), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 0, 255), 2);
+			char strDetectResult[100];
+			sprintf_s(strDetectResult, "Throwing Detected(%d person)", resultIter->trackId);
+			cv::putText(matResult_, strDetectResult, cv::Point(10, 200), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 0, 255), 2);
+		}
+		
 
 	}
 

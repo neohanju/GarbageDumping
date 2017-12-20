@@ -24,13 +24,22 @@ struct stParamResult
 
 struct stDetectResult
 {
-	stDetectResult() : trackId(0), bActionDetect(false) {}//,bThrowDetect {}
-	stDetectResult(unsigned int _trackId, bool _bActionDetect)
-		: trackId(_trackId), bActionDetect(_bActionDetect) {} // ,bTrhowDetect(_bThrowDetect){}
+	stDetectResult() : 
+		trackId(0), 
+		bActionDetect(false), 
+		bKCFDetect(false), 
+		bMASKDetect(false) {}
+
+	stDetectResult(unsigned int _trackId, bool _bActionDetect, bool _bKCFDetect, bool _bMASKDetect): 
+		trackId(_trackId), 
+		bActionDetect(_bActionDetect), 
+		bKCFDetect(_bKCFDetect), 
+		bMASKDetect(_bMASKDetect){}
 
 	unsigned int trackId;
 	bool bActionDetect;
-	bool bThrowDetect;
+	bool bKCFDetect;
+	bool bMASKDetect;
 
 	cv::Rect2d   box;
 	cv::Rect2d   headBox;
@@ -56,6 +65,7 @@ public:
 public:
 	unsigned int frameIdx;
 	unsigned int timeStamp;
+	bool bThrowDetect;
 	time_t procTime;
 	std::vector<stDetectResult> detectResults;
 };
@@ -71,7 +81,7 @@ public:
 
 	void Initialize(stParamResult &stParams_);
 	void Finalize();
-	CDetectResultSet Run(hj::CTrackResult *_trackResult, CThrowDetectorSet *_throwResult, jm::CActionResultSet *_actionResult, cv::Mat _curFrame, int _frameIdx);
+	CDetectResultSet Run(hj::CTrackResult *_trackResult, CThrownResultSet *_throwResult, jm::CActionResultSet *_actionResult, cv::Mat _curFrame, int _frameIdx);
 
 private:
 
@@ -102,10 +112,7 @@ public:
 	CDetectResultSet  integratedResult_;
 	hj::CTrackResult  curTrackResult_;
 	CActionResultSet  curActionResult_;
-	CThrowDetectorSet curThrowResult_;
-
-	//hj::CTrackResult     curTrackResult_;         //있어야 하나? 없어도 될듯!
-	//jm::CActionResultSet curActionResult_;
+	CThrownResultSet curThrowResult_;
 
 	/*Detection relate*/
 	bool bSVMResult;

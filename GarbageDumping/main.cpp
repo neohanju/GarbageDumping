@@ -281,7 +281,7 @@ int main(int argc, char** argv)
 	// Throw Detector Set Initialize...
 	CThrowDetectorSet cThwDetectorSet;
 	cThwDetectorSet.init(imageWidth, imageHeight);
-
+	CThrownResultSet thrownResult;
 
 	for (int fIdx = START_FRAME_INDEX; fIdx < nLastFrameIndex; fIdx++)
 	{
@@ -336,7 +336,7 @@ int main(int argc, char** argv)
 		if (bVibe_on == true && trackResult.objectInfos.size() > 0)
 		{
 			cThwDetectorSet.Run(trackResult, matCurFrame, m_fg_map, Heatmap, matDisp);
-
+			thrownResult = cThwDetectorSet.throwResult_;
 
 //			cThwDetector.set_keypoints(trackResult, 0);
 //			bool bDetect = cThwDetector.Detect(matCurFrame, m_fg_map, Heatmap, matDisp);
@@ -348,14 +348,15 @@ int main(int argc, char** argv)
 		matDisp.release();
 
 
-
-
 		//Action Classification
 		actionResult = cClassifier.Run(&trackResult, matCurFrame, fIdx);        //model path (?)
 
 
 		//Result Integration
-		integrateResult = cResult.Run(&trackResult, &cThwDetectorSet, &actionResult, matCurFrame, fIdx);
+		integrateResult = cResult.Run(&trackResult, &thrownResult, &actionResult, matCurFrame, fIdx);
+
+		//이렇게 들어가는방법 외에 다른방법 찾아보기!
+		thrownResult.throwResults.clear();
 	}
 
 	
