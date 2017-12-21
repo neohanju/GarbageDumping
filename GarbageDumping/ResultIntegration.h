@@ -87,7 +87,7 @@ private:
 
 	void Integrate(/*hj::CTrackResult *_trackResult, jm::CActionResultSet *_actionResult*/);
 	void Visualize();
-	void DrawBoxWithID( cv::Mat &imageFrame, cv::Rect box, unsigned int nID, int lineStyle, int fontSize, cv::Scalar curColor);
+	unsigned int DrawBoxWithID( cv::Mat &imageFrame, cv::Rect box, unsigned int nID, int lineStyle, int fontSize, cv::Scalar curColor);
 	cv::Scalar getColorByID(unsigned int nID, std::vector<cv::Scalar> *vecColors);
 	cv::Scalar hsv2rgb(double h, double s, double v);
 	std::vector<cv::Scalar> GenerateColors(unsigned int numColor);

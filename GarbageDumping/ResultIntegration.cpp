@@ -70,7 +70,7 @@ CDetectResultSet CResultIntegration::Run(hj::CTrackResult *_trackResult,
 void CResultIntegration::Integrate(/*hj::CTrackResult *_trackResult, jm::CActionResultSet *_actionResult*/)
 {
 	assert(curTrackResult_.objectInfos.size() == curActionResult_.actionResults.size());
-	assert(curTrackResult_.objectInfos.size() == curThrowResult_.throwResults.size());
+	//assert(curTrackResult_.objectInfos.size() == curThrowResult_.throwResults.size());   //넣지 말아야 하는건가?!
 	
 	integratedResult_.detectResults.clear();                     // 이부분 다르게 수정할 방법은?
 	integratedResult_.frameIdx = this->nCurrentFrameIdx_;
@@ -123,56 +123,72 @@ void CResultIntegration::Visualize()
 	cv::rectangle(matResult_, cv::Rect(5, 2, 100, 22), cv::Scalar(0, 0, 0), CV_FILLED);
 	cv::putText(matResult_, strFrameInfo, cv::Point(6, 20), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(255, 255, 255));
 
-	//TODO: Track result도 표시되어야 하고, detection result도 표시되어야 한다.( 현재 detection만 출력된다.)
+	int num_detect = 0;
 
-	/*SVM Result*/
+	/* Result */
 	for (std::vector<stDetectResult>::iterator resultIter = integratedResult_.detectResults.begin();
 		resultIter != integratedResult_.detectResults.end(); resultIter++)
 	{
-		if (resultIter->bActionDetect) 
-		{
-			cv::rectangle(
-				matResult_,
-				resultIter->box,
-				cv::Scalar(0, 0, 255), 2);
 
+		DrawBoxWithID(
+			matResult_, 
+			resultIter->box, 
+			resultIter->trackId, 
+			1,
+			0, 
+			getColorByID(resultIter->trackId, &vecColors_));
+
+		if (resultIter->bActionDetect)
+		{
+
+			cv::rectangle(
+				matResult_, 
+				cv::Rect((int)resultIter->box.x+ 7, (int)resultIter->box.y - 12, 14, 14), 
+				cv::Scalar(0, 0, 255), 
+				CV_FILLED);
+
+			num_detect++;
 			char strDetectResult[100];
-			sprintf_s(strDetectResult, "Throwing Detected(%d person)", resultIter->trackId);
-			cv::putText(matResult_, strDetectResult, cv::Point(10, 200), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 0, 255), 2);
+			sprintf_s(strDetectResult, "SVM Detected(%d person)", resultIter->trackId);
+			cv::putText(matResult_, strDetectResult, cv::Point(10, 100 * num_detect), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 0, 255), 2);
+
 		}
 
 		if (resultIter->bKCFDetect)
 		{
+
 			cv::rectangle(
-				matResult_,
-				resultIter->box,
-				cv::Scalar(0, 255, 0), 3);
+				matResult_, 
+				cv::Rect((int)resultIter->box.x+ 21, (int)resultIter->box.y - 12, 14, 14), 
+				cv::Scalar(0, 255, 0), 
+				CV_FILLED);
 
+			num_detect++;
 			char strDetectResult[100];
-			sprintf_s(strDetectResult, "Throwing Detected(%d person)", resultIter->trackId);
-			cv::putText(matResult_, strDetectResult, cv::Point(10, 200), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 0, 255), 2);
+			sprintf_s(strDetectResult, "KCF Detected(%d person)", resultIter->trackId);
+			cv::putText(matResult_, strDetectResult, cv::Point(10, 100 * num_detect), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 0, 255), 2);
+
 		}
-		
+
+		if (resultIter->bMASKDetect)
+		{
+
+			cv::rectangle(
+				matResult_, 
+				cv::Rect((int)resultIter->box.x+ 35, (int)resultIter->box.y - 12, 14, 14),
+				cv::Scalar(255, 0, 0), 
+				CV_FILLED);
+
+			num_detect++;
+			char strDetectResult[100];
+			sprintf_s(strDetectResult, "Mask Detected(%d person)", resultIter->trackId);
+			cv::putText(matResult_, strDetectResult, cv::Point(10, 100 * num_detect), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 0, 255), 2);
+
+		}
 
 	}
 
-	/*Track Result*/
-	for (std::vector<hj::CObjectInfo>::iterator trackIter = curTrackResult_.objectInfos.begin();
-		trackIter != curTrackResult_.objectInfos.end(); trackIter++)
-	{
-		DrawBoxWithID(
-			matResult_,
-			trackIter->box,
-			trackIter->id,
-			0,
-			0,
-			getColorByID(trackIter->id, &vecColors_));
 
-		cv::rectangle(
-			matResult_,
-			trackIter->headBox,
-			cv::Scalar(0, 0, 255), 1);
-	}
 
 
 	////---------------------------------------------------
@@ -193,7 +209,7 @@ void CResultIntegration::Visualize()
 }
 
 // 이 함수를 어떻게 없애지... Track에서 받아오는게 좋을듯 한데..(재정의)
-void CResultIntegration::DrawBoxWithID(
+unsigned int CResultIntegration::DrawBoxWithID(
 	cv::Mat &imageFrame,
 	cv::Rect box,
 	unsigned int nID,
@@ -211,15 +227,18 @@ void CResultIntegration::DrawBoxWithID(
 	}
 	if (0 == fontSize)
 	{
-		cv::rectangle(imageFrame, box, curColor, 1);
-		cv::rectangle(imageFrame, cv::Rect((int)box.x, (int)box.y - 10, 7 * labelLength, 14), curColor, CV_FILLED);
-		cv::putText(imageFrame, std::to_string(nID), cv::Point((int)box.x, (int)box.y - 1), cv::FONT_HERSHEY_SIMPLEX, 0.3, cv::Scalar(0, 0, 0));
+		cv::rectangle(imageFrame, box, curColor, 1 + lineStyle);
+		cv::rectangle(imageFrame, cv::Rect((int)box.x, (int)box.y - 13, 7 * labelLength, 14), curColor, CV_FILLED);
+		cv::putText(imageFrame, std::to_string(nID), cv::Point((int)box.x, (int)box.y-4), cv::FONT_HERSHEY_SIMPLEX, 0.3, cv::Scalar(0, 0, 0));
+
 	}
 	else
 	{
 		cv::rectangle(imageFrame, box, curColor, 1 + lineStyle);
 		cv::putText(imageFrame, std::to_string(nID), cv::Point((int)box.x, (int)box.y + 40), cv::FONT_HERSHEY_SIMPLEX, 0.5, curColor);
 	}
+
+	return labelLength;
 }
 
 
