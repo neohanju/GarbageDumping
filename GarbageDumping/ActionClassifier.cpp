@@ -16,20 +16,33 @@ CActionClassifier::~CActionClassifier()
 	Finalize();
 }
 
-void CActionClassifier::Initialize(stParamAction &_stParam, std::string _strModelPath)
+void CActionClassifier::Initialize(stParamAction &_stParam/*, std::string _strModelPath*/)
 {
 	if (bInit_) { Finalize(); }
 
 	stActionParam_ = _stParam;
 	bInit_ = true;
 
-	// visualization related
+	//****************************************************
+	//    Visualization related
+	//****************************************************
 	bVisualizeResult_ = stActionParam_.bVisualize;
 	strVisWindowName_ = "Detection result";
 
-	//SVM related
+	//****************************************************
+	//    SVM Load related
+	//****************************************************
+	
+
+	/* Select train_xml file */
+	std::string _strModelPath;
+	if (stActionParam_.bNormalize) { _strModelPath = "../model\\normalize_model.xml"; }
+	else { _strModelPath = "../model\\not_normalize_model.xml"; }
+
+	/* Load SVM */
 	svm = cv::ml::SVM::create();
 	svm = cv::ml::SVM::load<cv::ml::SVM>(_strModelPath);
+
 }
 
 void CActionClassifier::Finalize()
@@ -40,6 +53,8 @@ void CActionClassifier::Finalize()
 
 	/* visualize related */
 	if (bVisualizeResult_) { cv::destroyWindow(strVisWindowName_); }
+
+	svm->clear();
 }
 
 void CActionClassifier::UpdatePoseletUsingTrack()
@@ -214,12 +229,13 @@ void CActionClassifier::Detect(std::deque<CPoselet*> _activePoselets, hj::CTrack
 			for (CAction::iterator objIter = (*poseletIter)->vectorObjInfo.begin();
 				objIter != (*poseletIter)->vectorObjInfo.end(); objIter++)
 			{
+				double normDist = CalcNormDist(objIter->keyPoint);
 
 				for (std::vector<hj::stKeyPoint>::iterator pointIter = objIter->keyPoint.begin();
 					pointIter != objIter->keyPoint.end(); pointIter++)
 				{
-					sampleMat.push_back(pointIter->x - objIter->keyPoint.at(1).x);
-					sampleMat.push_back(pointIter->y - objIter->keyPoint.at(1).y);
+					sampleMat.push_back( (pointIter->x - objIter->keyPoint.at(1).x) / normDist);
+					sampleMat.push_back( (pointIter->y - objIter->keyPoint.at(1).y) / normDist);
 				}
 			}
 
@@ -293,9 +309,22 @@ CActionResultSet CActionClassifier::Run(hj::CTrackResult *_curTrackResult, cv::M
 }
 
 
-// Normalize pose
-void CActionClassifier::Normalize()
+// Normalize relate
+double CActionClassifier::CalcNormDist(std::vector<hj::stKeyPoint> _curKeyoints)
 {
+	if (!stActionParam_.bNormalize) { return 1; }
+
+	double dist, leftDist, rightDist;
+	hj::stKeyPoint neckPoint     = _curKeyoints.at(1);
+	hj::stKeyPoint rightShoulder = _curKeyoints.at(2);
+	hj::stKeyPoint leftShoulder  = _curKeyoints.at(5);
+	
+	leftDist = std::pow((neckPoint.x - leftShoulder.x), 2) + std::pow((neckPoint.y - leftShoulder.y), 2);
+	rightDist = std::pow((neckPoint.x - rightShoulder.x), 2) + std::pow((neckPoint.y - rightShoulder.y), 2);
+
+	dist = (leftDist > rightDist) ? leftDist : rightDist;
+
+	return std::sqrt(dist);
 }
 
 

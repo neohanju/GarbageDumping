@@ -21,6 +21,7 @@ namespace jm
 			, nStepSize(5)
 			, bTrained(true)
 			, bVisualize(true)
+			, bNormalize(true)
 		{};
 
 		~stParamAction() {};
@@ -31,8 +32,11 @@ namespace jm
 		int  nPoseLength;
 		int  nMaxPendingFrame;
 		int  nStepSize;
-		bool bVisualize;
+
 		bool bTrained;
+		bool bVisualize;
+		bool bNormalize;
+		
 	};
 
 
@@ -109,7 +113,7 @@ namespace jm
 		CActionClassifier();
 		~CActionClassifier();
 
-		void Initialize(stParamAction &stParam, std::string _strModelPath);
+		void Initialize(stParamAction &stParam/*, std::string _strModelPath*/);
 		void Finalize();
 		CActionResultSet Run(hj::CTrackResult *_curTrackResult, cv::Mat _curFrame, int frameIdx);
 
@@ -117,10 +121,13 @@ namespace jm
 		void Detect(std::deque<CPoselet*> _activePoselets, hj::CTrackResult *_curTrackResult);
 		void TrainSVM(std::string _saveModelPath);
 		void UpdatePoseletUsingTrack();
-		void Normalize();
 		void ResultPackaging();
 		void Visualize(hj::CTrackResult *_curTrackResult);
 		void EliminationStepSize();
+
+		/* Normalize relate function */
+		double CalcNormDist(std::vector<hj::stKeyPoint> _curKeypoints);
+
 
 	public:
 		bool             bInit_;
@@ -128,7 +135,7 @@ namespace jm
 		unsigned int     nCurrentFrameIdx_;
 		hj::CTrackResult curTrackResult_;         //있어야 하나? 없어도 될듯!
 
-												  /* visualization related */
+		/* visualization related */
 		bool             bVisualizeResult_;
 		cv::Mat          matDetectResult_;
 		std::string      strVisWindowName_;
