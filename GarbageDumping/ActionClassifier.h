@@ -22,6 +22,7 @@ namespace jm
 			, bTrained(true)
 			, bVisualize(true)
 			, bNormalize(true)
+			, bUsingDisparity(true)
 		{};
 
 		~stParamAction() {};
@@ -36,6 +37,7 @@ namespace jm
 		bool bTrained;
 		bool bVisualize;
 		bool bNormalize;
+		bool bUsingDisparity;
 		
 	};
 

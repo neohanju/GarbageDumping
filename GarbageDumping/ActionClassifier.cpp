@@ -36,7 +36,8 @@ void CActionClassifier::Initialize(stParamAction &_stParam/*, std::string _strMo
 
 	/* Select train_xml file */
 	std::string _strModelPath;
-	if (stActionParam_.bNormalize) { _strModelPath = "../model\\normalize_model.xml"; }
+	if (stActionParam_.bUsingDisparity) { _strModelPath = "../model\\using_disparity_data.xml"; }
+	else if (stActionParam_.bNormalize) { _strModelPath = "../model\\normalize_model.xml"; }
 	else { _strModelPath = "../model\\not_normalize_model.xml"; }
 
 	/* Load SVM */
@@ -112,8 +113,8 @@ void CActionClassifier::UpdatePoseletUsingTrack()
 
 			if (curPoselet->id != objectIter->id) { continue; }
 
-			//// inactive에서 active로 업데이트 될때 update된 프레임 -1이 이전에 최근 업뎃과 같지 않으면 interpolation하는 작업
-			////interpolation ( TODO: 방법 수정)
+			////// inactive에서 active로 업데이트 될때 update된 프레임 -1이 이전에 최근 업뎃과 같지 않으면 interpolation하는 작업
+			//////interpolation ( TODO: 방법 수정)
 			//int pendingTime = this->nCurrentFrameIdx_ - curPoselet->nEndFrame;
 			//for (int interpolFrame = 1; interpolFrame < pendingTime; interpolFrame++)
 			//{
@@ -122,6 +123,8 @@ void CActionClassifier::UpdatePoseletUsingTrack()
 			//	int nKeypoint = 0;
 			//	hj::stKeyPoint tmpPoint;
 			//	std::vector<hj::stKeyPoint> tmpPoints;
+			//	hj::CObjectInfo tmpObjInfo;
+
 			//	for (std::vector<hj::stKeyPoint>::iterator pointIter = objectIter->keyPoint.begin();
 			//		pointIter != objectIter->keyPoint.end(); pointIter++, nKeypoint++)
 			//	{
@@ -136,8 +139,13 @@ void CActionClassifier::UpdatePoseletUsingTrack()
 			//		tmpPoints.push_back(tmpPoint);
 			//	}
 
-			//	curPoselet->vectorPose.push_back(tmpPoints);
+			//	tmpObjInfo.id = objectIter->id;
+			//	tmpObjInfo.keyPoint = tmpPoints;
+
+			//	curPoselet->vectorObjInfo.push_back(tmpObjInfo);
+			//	//curPoselet->vectorPose.push_back(tmpPoints);
 			//}
+
 
 			curPoselet->nEndFrame  = this->nCurrentFrameIdx_;         
 			curPoselet->duration++;
@@ -226,16 +234,73 @@ void CActionClassifier::Detect(std::deque<CPoselet*> _activePoselets, hj::CTrack
 		else 
 		{
 			cv::Mat sampleMat, tmpMat;
+			std::vector<hj::stKeyPoint> preKeypoint;
+
 			for (CAction::iterator objIter = (*poseletIter)->vectorObjInfo.begin();
 				objIter != (*poseletIter)->vectorObjInfo.end(); objIter++)
 			{
 				double normDist = CalcNormDist(objIter->keyPoint);
 
+				// save keypoint vector
 				for (std::vector<hj::stKeyPoint>::iterator pointIter = objIter->keyPoint.begin();
 					pointIter != objIter->keyPoint.end(); pointIter++)
 				{
 					sampleMat.push_back( (pointIter->x - objIter->keyPoint.at(1).x) / normDist);
 					sampleMat.push_back( (pointIter->y - objIter->keyPoint.at(1).y) / normDist);
+				}
+
+				//// disparity 사용안하면 저장하지 않기
+				//if (!stActionParam_.bUsingDisparity) { continue; }
+
+				//// save disparity vector
+				//std::vector<hj::stKeyPoint> curKeypoint = objIter->keyPoint;
+				//for (int keyPtsSize = 0; keyPtsSize < objIter->keyPoint.size(); keyPtsSize++)
+				//{
+				//	// 30 frame중 가장 첫 frame이라면 0으로 모두 저장
+				//	if (objIter == (*poseletIter)->vectorObjInfo.begin()) 
+				//	{ 
+				//		sampleMat.push_back(float(0));  // x 변위
+				//		sampleMat.push_back(float(0));  // y 변위 
+				//		
+				//	}
+
+				//	else
+				//	{
+				//		sampleMat.push_back(curKeypoint.at(keyPtsSize).x - preKeypoint.at(keyPtsSize).x);
+				//		sampleMat.push_back(curKeypoint.at(keyPtsSize).y - preKeypoint.at(keyPtsSize).y);
+				//	}
+
+				//}
+				//preKeypoint = curKeypoint;
+				
+			}
+
+			// disparity 사용안하면 저장하지 않기
+			if (stActionParam_.bUsingDisparity)
+			{
+				for (CAction::iterator objIter = (*poseletIter)->vectorObjInfo.begin();
+					objIter != (*poseletIter)->vectorObjInfo.end(); objIter++)
+				{
+					// save disparity vector
+					std::vector<hj::stKeyPoint> curKeypoint = objIter->keyPoint;
+					for (int keyPtsSize = 0; keyPtsSize < objIter->keyPoint.size(); keyPtsSize++)
+					{
+						// 30 frame중 가장 첫 frame이라면 0으로 모두 저장
+						if (objIter == (*poseletIter)->vectorObjInfo.begin())
+						{
+							sampleMat.push_back(double(0));  // x 변위
+							sampleMat.push_back(double(0));  // y 변위 
+
+						}
+
+						else
+						{
+							sampleMat.push_back(curKeypoint.at(keyPtsSize).x - preKeypoint.at(keyPtsSize).x);
+							sampleMat.push_back(curKeypoint.at(keyPtsSize).y - preKeypoint.at(keyPtsSize).y);
+						}
+
+					}
+					preKeypoint = curKeypoint;
 				}
 			}
 
@@ -251,7 +316,11 @@ void CActionClassifier::Detect(std::deque<CPoselet*> _activePoselets, hj::CTrack
 
 
 		listActionResult.push_back(curActionResult);
+
+		
 	}
+
+	
 }
 
 
