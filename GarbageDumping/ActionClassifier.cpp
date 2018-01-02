@@ -36,9 +36,19 @@ void CActionClassifier::Initialize(stParamAction &_stParam/*, std::string _strMo
 
 	/* Select train_xml file */
 	std::string _strModelPath;
-	if (stActionParam_.bUsingDisparity) { _strModelPath = "../model\\using_disparity_data.xml"; }
-	else if (stActionParam_.bNormalize) { _strModelPath = "../model\\normalize_model.xml"; }
-	else { _strModelPath = "../model\\not_normalize_model.xml"; }
+	if (stActionParam_.bNormalize)
+	{
+		if(stActionParam_.bUsingDisparity) { _strModelPath = "../model\\norm_using_disparity.xml"; }
+
+		else{ _strModelPath = "../model\\normalize_model.xml"; }
+	}
+
+	else 
+	{
+		if(stActionParam_.bUsingDisparity) { _strModelPath = "../model\\not_norm_using_disparity.xml"; }
+		
+		else { _strModelPath = "../model\\not_normalize_model.xml"; }
+	}
 
 	/* Load SVM */
 	svm = cv::ml::SVM::create();
@@ -241,6 +251,11 @@ void CActionClassifier::Detect(std::deque<CPoselet*> _activePoselets, hj::CTrack
 			{
 				double normDist = CalcNormDist(objIter->keyPoint);
 
+				if (normDist == 1) 
+				{ 
+					printf("here"); 
+				}
+
 				// save keypoint vector
 				for (std::vector<hj::stKeyPoint>::iterator pointIter = objIter->keyPoint.begin();
 					pointIter != objIter->keyPoint.end(); pointIter++)
@@ -249,60 +264,60 @@ void CActionClassifier::Detect(std::deque<CPoselet*> _activePoselets, hj::CTrack
 					sampleMat.push_back( (pointIter->y - objIter->keyPoint.at(1).y) / normDist);
 				}
 
-				//// disparity 사용안하면 저장하지 않기
-				//if (!stActionParam_.bUsingDisparity) { continue; }
+				// disparity 사용안하면 저장하지 않기
+				if (!stActionParam_.bUsingDisparity) { continue; }
 
-				//// save disparity vector
-				//std::vector<hj::stKeyPoint> curKeypoint = objIter->keyPoint;
-				//for (int keyPtsSize = 0; keyPtsSize < objIter->keyPoint.size(); keyPtsSize++)
-				//{
-				//	// 30 frame중 가장 첫 frame이라면 0으로 모두 저장
-				//	if (objIter == (*poseletIter)->vectorObjInfo.begin()) 
-				//	{ 
-				//		sampleMat.push_back(float(0));  // x 변위
-				//		sampleMat.push_back(float(0));  // y 변위 
-				//		
-				//	}
+				// save disparity vector
+				std::vector<hj::stKeyPoint> curKeypoint = objIter->keyPoint;
+				for (int keyPtsSize = 0; keyPtsSize < objIter->keyPoint.size(); keyPtsSize++)
+				{
+					// 30 frame중 가장 첫 frame이라면 0으로 모두 저장
+					if (objIter == (*poseletIter)->vectorObjInfo.begin()) 
+					{ 
+						sampleMat.push_back(double(0));  // x 변위
+						sampleMat.push_back(double(0));  // y 변위 
+						
+					}
 
-				//	else
-				//	{
-				//		sampleMat.push_back(curKeypoint.at(keyPtsSize).x - preKeypoint.at(keyPtsSize).x);
-				//		sampleMat.push_back(curKeypoint.at(keyPtsSize).y - preKeypoint.at(keyPtsSize).y);
-				//	}
+					else
+					{
+						sampleMat.push_back(curKeypoint.at(keyPtsSize).x - preKeypoint.at(keyPtsSize).x);
+						sampleMat.push_back(curKeypoint.at(keyPtsSize).y - preKeypoint.at(keyPtsSize).y);
+					}
 
-				//}
-				//preKeypoint = curKeypoint;
+				}
+				preKeypoint = curKeypoint;
 				
 			}
 
-			// disparity 사용안하면 저장하지 않기
-			if (stActionParam_.bUsingDisparity)
-			{
-				for (CAction::iterator objIter = (*poseletIter)->vectorObjInfo.begin();
-					objIter != (*poseletIter)->vectorObjInfo.end(); objIter++)
-				{
-					// save disparity vector
-					std::vector<hj::stKeyPoint> curKeypoint = objIter->keyPoint;
-					for (int keyPtsSize = 0; keyPtsSize < objIter->keyPoint.size(); keyPtsSize++)
-					{
-						// 30 frame중 가장 첫 frame이라면 0으로 모두 저장
-						if (objIter == (*poseletIter)->vectorObjInfo.begin())
-						{
-							sampleMat.push_back(double(0));  // x 변위
-							sampleMat.push_back(double(0));  // y 변위 
+			//// disparity 사용안하면 저장하지 않기
+			//if (stActionParam_.bUsingDisparity)
+			//{
+			//	for (CAction::iterator objIter = (*poseletIter)->vectorObjInfo.begin();
+			//		objIter != (*poseletIter)->vectorObjInfo.end(); objIter++)
+			//	{
+			//		// save disparity vector
+			//		std::vector<hj::stKeyPoint> curKeypoint = objIter->keyPoint;
+			//		for (int keyPtsSize = 0; keyPtsSize < objIter->keyPoint.size(); keyPtsSize++)
+			//		{
+			//			// 30 frame중 가장 첫 frame이라면 0으로 모두 저장
+			//			if (objIter == (*poseletIter)->vectorObjInfo.begin())
+			//			{
+			//				sampleMat.push_back(double(0));  // x 변위
+			//				sampleMat.push_back(double(0));  // y 변위 
 
-						}
+			//			}
 
-						else
-						{
-							sampleMat.push_back(curKeypoint.at(keyPtsSize).x - preKeypoint.at(keyPtsSize).x);
-							sampleMat.push_back(curKeypoint.at(keyPtsSize).y - preKeypoint.at(keyPtsSize).y);
-						}
+			//			else
+			//			{
+			//				sampleMat.push_back(curKeypoint.at(keyPtsSize).x - preKeypoint.at(keyPtsSize).x);
+			//				sampleMat.push_back(curKeypoint.at(keyPtsSize).y - preKeypoint.at(keyPtsSize).y);
+			//			}
 
-					}
-					preKeypoint = curKeypoint;
-				}
-			}
+			//		}
+			//		preKeypoint = curKeypoint;
+			//	}
+			//}
 
 			sampleMat.convertTo(tmpMat, CV_32FC1);
 			int res = svm->predict(tmpMat.t());

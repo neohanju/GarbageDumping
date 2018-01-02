@@ -265,7 +265,7 @@ int main(int argc, char** argv)
 	jm::stParamAction actionParams;
 	jm::CActionClassifier cClassifier;
 	//std::string strModelPath = std::string(TRAINED_MODEL_PATH);
-	actionParams.bNormalize = true;
+	actionParams.bNormalize = false;
 	actionParams.bUsingDisparity = true;
 	cClassifier.Initialize(actionParams/*, strModelPath*/);
 	jm::CActionResultSet actionResult;
