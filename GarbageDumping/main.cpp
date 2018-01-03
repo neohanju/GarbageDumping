@@ -266,7 +266,7 @@ int main(int argc, char** argv)
 	jm::CActionClassifier cClassifier;
 	//std::string strModelPath = std::string(TRAINED_MODEL_PATH);
 	actionParams.bNormalize = false;
-	actionParams.bUsingDisparity = true;
+	actionParams.bUsingDisparity = false;
 	cClassifier.Initialize(actionParams/*, strModelPath*/);
 	jm::CActionResultSet actionResult;
 
@@ -284,6 +284,9 @@ int main(int argc, char** argv)
 	CThrowDetectorSet cThwDetectorSet;
 	cThwDetectorSet.init(imageWidth, imageHeight);
 	CThrownResultSet thrownResult;
+
+	std::string strWindowName_ = "Throw Detect";
+	cv::namedWindow(strWindowName_);
 
 	for (int fIdx = START_FRAME_INDEX; fIdx < nLastFrameIndex; fIdx++)
 	{
@@ -307,6 +310,7 @@ int main(int argc, char** argv)
 
 		// Visualize SAVE
 		matCurFrame.copyTo(matDisp);
+		//matDisp = matCurFrame.clone();
 
 		// Background modeling for fixed camera
 		Mat matCurFrame_re;
@@ -345,7 +349,8 @@ int main(int argc, char** argv)
 
 		}
 
-		imshow("Throwing Detection", matDisp);
+		
+		cv::imshow(strWindowName_, matDisp);
 		cvWaitKey(1);
 		matDisp.release();
 
@@ -361,6 +366,7 @@ int main(int argc, char** argv)
 		thrownResult.throwResults.clear();
 	}
 
+	cv::destroyWindow(strWindowName_);
 	
 	
 	return 0;
