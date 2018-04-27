@@ -1,10 +1,12 @@
 import numpy as np
+import os
 
 
 class DataLoader():
-    def __init__(self, batch_size=16, shuffle=True):
-        self.x_data = None
-        self.y_data = None
+    def __init__(self, x_data, y_data, batch_size=16, shuffle=True):
+        self.data_root = data_root
+        self.x_data = x_data
+        self.y_data = y_data
         self.index = None
         self.batch_size = batch_size
         self.shuffle = shuffle
@@ -33,3 +35,22 @@ class DataLoader():
             self.index = self.index[self.batch_size:]
 
         return x_batch, y_batch
+
+
+def read_data(_data_root):
+
+    x = []
+    y = []
+    for file_name in os.listdir(_data_root):
+        file_path = _data_root + "\\" + file_name
+        tmp_name = file_name.split(".")[0]
+
+        tmp_x = np.load(file_path)
+        tmp_y = tmp_name.split("-")[-1]
+
+        x.append(tmp_x)
+        y.append(tmp_y)
+
+    return x, y
+
+if __name__ == "__main__":
