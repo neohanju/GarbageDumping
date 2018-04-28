@@ -47,6 +47,10 @@ set_session(sess)
 # weight initializer
 from keras.initializers import glorot_uniform
 
+kBasePath = "/home/mlpa/data_ssd/workspace/dataset/etri_action_data"
+# kResultVideoBasePath = os.path.join(kBasePath, "point_check")
+kActionSampleBasePath = kBasePath
+
 #########################################################
 #                   tensorboard setup                   #
 #########################################################
@@ -56,10 +60,8 @@ from keras.callbacks import TensorBoard
 tbCallBack = keras.callbacks.TensorBoard(log_dir='./Graph',
                                          histogram_freq=0, write_graph=True, write_images=True)
 
-kBasePath = "C:\\Users\\JM\\Desktop\\Data\\ETRIrelated\\BMVC\\"
-# kResultVideoBasePath = os.path.join(kBasePath, "point_check")
-kActionSampleBasePath = os.path.join(kBasePath, "action_data")
-
+mcCallBack = keras.callbacks.ModelCheckpoint('./model/{epoch:05d}_epoch.hdf5', monitor='acc',
+                                             save_best_only=True, period=50)
 
 def parsing_file_name(_data_path):
 
@@ -93,5 +95,5 @@ test_data = np.expand_dims(action_data, axis=3)
 
 model = Model(inputs=input_poses, outputs=x_)
 model.compile(optimizer='rmsprop', loss='mse', metrics=['accuracy'])
-model.fit(test_data, test_data, epochs=100, callbacks=[tbCallBack])
+model.fit(test_data, test_data, epochs=10000, callbacks=[tbCallBack, mcCallBack])
 
