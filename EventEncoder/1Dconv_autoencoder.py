@@ -81,7 +81,7 @@ num_z = 1024
 size_kernel_conv1 = 36
 size_kernel_conv2 = 10
 
-size_kernle_conv3 = kInputSampleShape[0] - (size_kernel_conv1 - 1) - (size_kernel_conv2 - 1)
+size_kernel_conv3 = kInputSampleShape[0] - (size_kernel_conv1 - 1) - (size_kernel_conv2 - 1)
 
 model = Sequential()
 model.add(Conv2D(num_filters_conv1, (size_kernel_conv1, 36), input_shape=kInputSampleShape))
@@ -92,11 +92,11 @@ model.add(Conv2D(num_filters_conv2, (size_kernel_conv2, 1)))
 model.add(BatchNormalization())
 model.add(Activation('relu'))
 
-model.add(Conv2D(num_z, (16, 1)))
+model.add(Conv2D(num_z, (size_kernel_conv3, 1)))
 model.add(BatchNormalization())
 model.add(Activation('relu'))
 
-model.add(Conv2DTranspose(num_filters_conv2, (size_kernle_conv3, 1)))
+model.add(Conv2DTranspose(num_filters_conv2, (size_kernel_conv3, 1)))
 model.add(BatchNormalization())
 model.add(Activation('relu'))
 
