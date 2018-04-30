@@ -83,31 +83,36 @@ size_kernel_conv2 = 10
 
 size_kernel_conv3 = kInputSampleShape[0] - (size_kernel_conv1 - 1) - (size_kernel_conv2 - 1)
 
-model = Sequential()
-model.add(Conv2D(num_filters_conv1, (size_kernel_conv1, 36), input_shape=kInputSampleShape))
-model.add(BatchNormalization())
-model.add(Activation('relu'))
+def three_layer_model():
 
-model.add(Conv2D(num_filters_conv2, (size_kernel_conv2, 1)))
-model.add(BatchNormalization())
-model.add(Activation('relu'))
+    _model = Sequential()
+    _model.add(Conv2D(num_filters_conv1, (size_kernel_conv1, 36), input_shape=kInputSampleShape))
+    _model.add(BatchNormalization())
+    _model.add(Activation('relu'))
 
-model.add(Conv2D(num_z, (size_kernel_conv3, 1)))
-model.add(BatchNormalization())
-model.add(Activation('relu'))
+    _model.add(Conv2D(num_filters_conv2, (size_kernel_conv2, 1)))
+    _model.add(BatchNormalization())
+    _model.add(Activation('relu'))
 
-model.add(Conv2DTranspose(num_filters_conv2, (size_kernel_conv3, 1)))
-model.add(BatchNormalization())
-model.add(Activation('relu'))
+    _model.add(Conv2D(num_z, (size_kernel_conv3, 1)))
+    _model.add(BatchNormalization())
+    _model.add(Activation('relu'))
 
-model.add(Conv2DTranspose(num_filters_conv1, (size_kernel_conv2, 1)))
-model.add(BatchNormalization())
-model.add(Activation('relu'))
+    _model.add(Conv2DTranspose(num_filters_conv2, (size_kernel_conv3, 1)))
+    _model.add(BatchNormalization())
+    _model.add(Activation('relu'))
 
-model.add(Conv2DTranspose(1, (size_kernel_conv1, 36)))
-model.add(BatchNormalization())
-model.add(Activation('relu'))
+    _model.add(Conv2DTranspose(num_filters_conv1, (size_kernel_conv2, 1)))
+    _model.add(BatchNormalization())
+    _model.add(Activation('relu'))
 
+    _model.add(Conv2DTranspose(1, (size_kernel_conv1, 36)))
+    _model.add(BatchNormalization())
+    _model.add(Activation('relu'))
+
+    return _model
+
+model = three_layer_model()
 model.compile(optimizer='rmsprop', loss='mse', metrics=['accuracy'])
 model.fit(train_data, train_data, epochs=10000, callbacks=[tbCallBack, mcCallBack])
 
