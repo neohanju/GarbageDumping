@@ -289,3 +289,6 @@ __pycache__/
 GarbageDumping/main.cpp
 *.png
 *.DESKTOP-PVVC72B
+
+EventEncoder/Graph/
+EventEncoder/model/
