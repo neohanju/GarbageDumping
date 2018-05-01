@@ -290,5 +290,6 @@ GarbageDumping/main.cpp
 *.png
 *.DESKTOP-PVVC72B
 
-EventEncoder/Graph/
-EventEncoder/model/
+EventEncoder/Graph
+EventEncoder/model
+EventEncoder/recon_result

@@ -2,13 +2,13 @@ import numpy as np
 import cv2
 import os
 import progressbar
+import glob
 
-kInputFileName = "001-01-0147-030-10-990_230-297_600-29_884-0"
 kSampleType = "30_10"
-kDataBasePath = "/home/mlpa/data_ssd/workspace/dataset/etri_action_data"
-kInputBasePath = os.path.join(kDataBasePath, kSampleType)
-kReconBasePath = os.path.join(kDataBasePath, kSampleType, "recon")
-kResultBasePath = os.path.join(kDataBasePath, kSampleType, "video")
+kDataBasePath = "/home/jm/etri_action_data"
+kProjectBasePath = "/home/jm/workspace/GarbageDumping"
+kReconBasePath = os.path.join(kProjectBasePath, "EventEncoder/recon_result")
+kResultBasePath = kReconBasePath
 
 kOriginCoord = 100
 kImageSize = 600
@@ -42,43 +42,49 @@ def draw_keypoints(img, keypoints, confidences, color):
 
 if __name__ == "__main__":
 
-    input_sample = np.load(os.path.join(kInputBasePath, kInputFileName + '.npy'))
-    recon_sample = np.load(os.path.join(kReconBasePath, kInputFileName + '-recon.npy'))
+    sample_paths = glob.glob(os.path.join(kDataBasePath, kSampleType, "*.npy"))
 
-    # rescale and translation
-    non_zero_input = np.array([val if val != 0 else kOriginCoord for val in input_sample.flatten()])
-    non_zero_recon = np.array([val if val != 0 else kOriginCoord for val in recon_sample.flatten()])
-    max_pos = np.amax(abs(non_zero_input - kOriginCoord))
-    # only consider the range of original data, because the reconstructed one has outlier points
-    pos_range = max_pos * 1.1
-    input_sample_adjusted = 0.5 * kImageSize * ((input_sample - kOriginCoord) / max_pos + 1.0)
-    recon_sample_adjusted = 0.5 * kImageSize * ((recon_sample - kOriginCoord) / max_pos + 1.0)
+    for k in progressbar.progressbar(range(len(sample_paths))):
 
-    # video writer
-    fourcc = cv2.VideoWriter_fourcc('D', 'I', 'V', 'X')
-    video_out = cv2.VideoWriter(os.path.join(kResultBasePath, kInputFileName + '.avi'),
-                                fourcc, 30.0, (kImageSize, kImageSize))
+        inputFileName = os.path.basename(sample_paths[k]).split('.')[0]
+        input_sample = np.load(sample_paths[k])
+        recon_sample = np.load(os.path.join(kReconBasePath, inputFileName + '-recon.npy'))
 
-    for i in progressbar.progressbar(range(input_sample.shape[0])):
+        # rescale and translation
+        non_zero_input = np.array([val if val != 0 else kOriginCoord for val in input_sample.flatten()])
+        non_zero_recon = np.array([val if val != 0 else kOriginCoord for val in recon_sample.flatten()])
+        max_pos = np.amax(abs(non_zero_input - kOriginCoord))
+        # only consider the range of original data, because the reconstructed one has outlier points
+        pos_range = max_pos * 1.1
+        input_sample_adjusted = 0.5 * kImageSize * ((input_sample - kOriginCoord) / max_pos + 1.0)
+        recon_sample_adjusted = 0.5 * kImageSize * ((recon_sample - kOriginCoord) / max_pos + 1.0)
 
-        xs = input_sample[i, 0::2]
-        ys = input_sample[i, 1::2]
-        confidences = [1] * len(xs)
-        for j in range(len(xs)):
-            if 0 == xs[j] + ys[j]:
-                confidences[j] = 0
+        # video writer
+        fourcc = cv2.VideoWriter_fourcc('D', 'I', 'V', 'X')
+        video_out = cv2.VideoWriter(os.path.join(kResultBasePath, inputFileName + '.avi'),
+                                    fourcc, 30.0, (kImageSize, kImageSize))
 
-        img = np.zeros((kImageSize, kImageSize, 3), np.uint8)
-        img = draw_keypoints(img, input_sample_adjusted[i, :], confidences, (0, 0, 255))
-        img = draw_keypoints(img, recon_sample_adjusted[i, :], confidences, (0, 255, 0))
-        video_out.write(img)
+        for i in range(input_sample.shape[0]):
 
-        if kHaveDisplay:
-            cv2.imshow('frame', img)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
+            xs = input_sample[i, 0::2]
+            ys = input_sample[i, 1::2]
+            confidences = [1] * len(xs)
+            for j in range(len(xs)):
+                if 0 == xs[j] + ys[j]:
+                    confidences[j] = 0
 
-    video_out.release()
+            img = np.zeros((kImageSize, kImageSize, 3), np.uint8)
+            img = draw_keypoints(img, input_sample_adjusted[i, :], confidences, (0, 0, 255))
+            img = draw_keypoints(img, recon_sample_adjusted[i, :], confidences, (0, 255, 0))
+            video_out.write(img)
+
+            if kHaveDisplay:
+                cv2.imshow('frame', img)
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
+
+        video_out.release()
+
     if kHaveDisplay:
         cv2.destroyAllWindows()
 
