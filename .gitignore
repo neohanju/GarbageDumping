@@ -293,3 +293,5 @@ GarbageDumping/main.cpp
 EventEncoder/Graph
 EventEncoder/model
 EventEncoder/recon_result
+
+EventEncoder/training_results

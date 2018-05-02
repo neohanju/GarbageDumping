@@ -3,12 +3,8 @@ import cv2
 import os
 import progressbar
 import glob
-
-kSampleType = "30_10"
-kDataBasePath = "/home/jm/etri_action_data"
-kProjectBasePath = "/home/jm/workspace/GarbageDumping"
-kReconBasePath = os.path.join(kProjectBasePath, "EventEncoder/recon_result")
-kResultBasePath = kReconBasePath
+import argparse
+from random import shuffle
 
 kOriginCoord = 0
 kImageSize = 600
@@ -18,7 +14,14 @@ kLimbs = [[1, 2], [1, 5], [2, 3], [3, 4], [5, 6],
          [11, 12], [12, 13], [1, 0], [0, 14], [14, 16],
          [0, 15], [15, 17]]
 
-kHaveDisplay = "DISPLAY" in os.environ
+parser = argparse.ArgumentParser(description='Visualizing input and reconstruction via video')
+# model related ---------------------------------------------------------------
+parser.add_argument('--input_path', type=str, default='', help="path for input data.")
+parser.add_argument('--recon_path', type=str, default='', help="path for reconstructions.")
+parser.add_argument('--save_path', type=str, default='', help="result video save path.")
+parser.add_argument('--random_sample', type=int, help="number of random sampling")
+options = parser.parse_args()
+print(options)
 
 
 def draw_keypoints(img, keypoints, confidences, color):
@@ -42,13 +45,19 @@ def draw_keypoints(img, keypoints, confidences, color):
 
 if __name__ == "__main__":
 
-    sample_paths = glob.glob(os.path.join(kDataBasePath, kSampleType, "*.npy"))
+    sample_paths = glob.glob(os.path.join(options.input_path, "*.npy"))
+    kHaveDisplay = "DISPLAY" in os.environ
+    os.mkdir(options.save_path)
+
+    if options.random_sample:
+        shuffle(sample_paths)
+        sample_paths = sample_paths[0:options.random_sample]
 
     for k in progressbar.progressbar(range(len(sample_paths))):
 
         inputFileName = os.path.basename(sample_paths[k]).split('.')[0]
         input_sample = np.load(sample_paths[k])
-        recon_sample = np.load(os.path.join(kReconBasePath, inputFileName + '-recon.npy'))
+        recon_sample = np.load(os.path.join(options.recon_path, inputFileName + '-recon.npy'))
 
         # rescale and translation
         non_zero_input = np.array([val if val != 0 else kOriginCoord for val in input_sample.flatten()])
@@ -61,7 +70,7 @@ if __name__ == "__main__":
 
         # video writer
         fourcc = cv2.VideoWriter_fourcc('D', 'I', 'V', 'X')
-        video_out = cv2.VideoWriter(os.path.join(kResultBasePath, inputFileName + '.avi'),
+        video_out = cv2.VideoWriter(os.path.join(options.save_path, inputFileName + '.avi'),
                                     fourcc, 30.0, (kImageSize, kImageSize))
 
         for i in range(input_sample.shape[0]):
@@ -87,6 +96,7 @@ if __name__ == "__main__":
 
     if kHaveDisplay:
         cv2.destroyAllWindows()
+
 
 # ()()
 # ('')HAANJU.YOO
