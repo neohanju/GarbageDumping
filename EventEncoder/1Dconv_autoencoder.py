@@ -5,6 +5,7 @@ from keras.models import Sequential
 from keras.layers import Dense, Activation, Flatten, Conv2D,  Conv2DTranspose
 from keras.layers.normalization import BatchNormalization
 from keras.backend import set_session
+from keras import regularizers
 
 import numpy as np
 import keras.layers
@@ -27,7 +28,7 @@ import glob
 # weight initializer
 from keras.initializers import glorot_uniform
 
-kBasePath = "/home/jm/etri_action_data/neck0_30_10"
+kBasePath = "/home/jm/etri_action_data/30_10"
 # kResultVideoBasePath = os.path.join(kBasePath, "point_check")
 kActionSampleBasePath = kBasePath
 kInputSampleShape = (30, 36, 1)
@@ -83,10 +84,15 @@ size_kernel_conv2 = 5
 
 size_kernel_conv3 = kInputSampleShape[0] - (size_kernel_conv1 - 1) - (size_kernel_conv2 - 1)
 
-num_filters = [2048, 1024, 512, 256, 128, 64]
-size_kernels = [  5,    5,   5,   5,   5,  5]
-#  output:       26,   22,  18,  14,  10,  6
-num_z = 128
+# num_filters = [2048, 1024, 512, 256, 128, 64]
+# size_kernels = [  5,    5,   5,   5,   5,  5]
+# #  output:       26,   22,  18,  14,  10,  6
+# num_z = 128
+
+num_filters = [256, 128]
+size_kernels = [18,   5]
+#  output:      13,   9
+num_z = 1024
 
 
 def n_layer_model(_num_fs, _sz_ks, _numz, _input_shape=kInputSampleShape):
@@ -101,7 +107,8 @@ def n_layer_model(_num_fs, _sz_ks, _numz, _input_shape=kInputSampleShape):
     _num_layers = len(_num_fs)
 
     _model = Sequential()
-    _model.add(Conv2D(_num_fs[0], (_sz_ks[0], 36), input_shape=_input_shape))
+    _model.add(Conv2D(_num_fs[0], (_sz_ks[0], 36),
+                      input_shape=_input_shape))
     _model.add(BatchNormalization())
     _model.add(Activation('relu'))
 
@@ -126,11 +133,65 @@ def n_layer_model(_num_fs, _sz_ks, _numz, _input_shape=kInputSampleShape):
             _input_width = 36
         _model.add(Conv2DTranspose(num_fs, (sz_k, _input_width)))
         _model.add(BatchNormalization())
-        _model.add(Activation('relu'))
+        if i+1 == len(_deconv_settings):
+            # _model.add(Activation('tanh'))
+            pass
+        else:
+            _model.add(Activation('relu'))
 
     return _model
 
 
+def n_layer_reg_model(_num_fs, _sz_ks, _numz, _input_shape=kInputSampleShape):
+
+    assert (len(_num_fs) == len(_sz_ks))
+
+    _sz_z_k = _input_shape[0]
+    for sk in _sz_ks:
+        _sz_z_k -= (sk - 1)
+        assert(0 < _sz_z_k)
+
+    _num_layers = len(_num_fs)
+
+    _model = Sequential()
+    _model.add(Conv2D(_num_fs[0], (_sz_ks[0], 36),
+                      kernel_regularizer=regularizers.l2(0.01),
+                      activity_regularizer=regularizers.l1(0.01),
+                      input_shape=_input_shape))
+    _model.add(BatchNormalization())
+    _model.add(Activation('relu'))
+
+    # for convolutional layers
+    _conv_settings = [(_num_fs[i], _sz_ks[i]) for i in range(1, _num_layers)]
+    _conv_settings.append((_numz, _sz_z_k))
+
+    for (num_fs, sz_k) in _conv_settings:
+        _model.add(Conv2D(num_fs, (sz_k, 1),
+                          kernel_regularizer=regularizers.l2(0.01),
+                          activity_regularizer=regularizers.l1(0.01)))
+        _model.add(BatchNormalization())
+        _model.add(Activation('relu'))
+
+    # for deconvolutional layers
+    _num_fs = _num_fs[::-1]
+    _num_fs.append(1)
+    _sz_ks.append(_sz_z_k)
+    _sz_ks = _sz_ks[::-1]
+    _deconv_settings = [(_num_fs[i], _sz_ks[i]) for i in range(len(_num_fs))]
+    _input_width = 1
+    for i, (num_fs, sz_k) in enumerate(_deconv_settings):
+        if i + 1 == len(_deconv_settings):
+            _input_width = 36
+        _model.add(Conv2DTranspose(num_fs, (sz_k, _input_width),
+                                   kernel_regularizer=regularizers.l2(0.01),
+                                   activity_regularizer=regularizers.l1(0.01)))
+        _model.add(BatchNormalization())
+        if i+1 == len(_deconv_settings):
+            _model.add(Activation('tanh'))
+        else:
+            _model.add(Activation('relu'))
+
+    return _model
 # model = n_layer_model([num_filters_conv1, num_filters_conv2], [size_kernel_conv1, size_kernel_conv2], num_z)
 # print(model)
 
@@ -172,6 +233,6 @@ def fully_connected_model():
     return _model
 
 model = n_layer_model([num_filters_conv1, num_filters_conv2], [size_kernel_conv1, size_kernel_conv2], num_z)
-model.compile(optimizer='rmsprop', loss='mse', metrics=['accuracy'])
-model.fit(train_data, train_data, epochs=10000, callbacks=[tbCallBack, mcCallBack])
+model.compile(optimizer='rmsprop', loss='mse', metrics=['accuracy', 'mse'])
+model.fit(train_data, train_data, epochs=10000, callbacks=[tbCallBack, mcCallBack], shuffle=True)
 
