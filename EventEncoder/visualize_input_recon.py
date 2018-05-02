@@ -10,7 +10,7 @@ kProjectBasePath = "/home/jm/workspace/GarbageDumping"
 kReconBasePath = os.path.join(kProjectBasePath, "EventEncoder/recon_result")
 kResultBasePath = kReconBasePath
 
-kOriginCoord = 100
+kOriginCoord = 0
 kImageSize = 600
 
 kLimbs = [[1, 2], [1, 5], [2, 3], [3, 4], [5, 6],
@@ -70,7 +70,7 @@ if __name__ == "__main__":
             ys = input_sample[i, 1::2]
             confidences = [1] * len(xs)
             for j in range(len(xs)):
-                if 0 == xs[j] + ys[j]:
+                if 0 == xs[j] + ys[j] and j != 1:  # exclude the first neck point
                     confidences[j] = 0
 
             img = np.zeros((kImageSize, kImageSize, 3), np.uint8)
