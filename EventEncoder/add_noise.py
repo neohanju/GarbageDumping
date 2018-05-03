@@ -1,4 +1,5 @@
 import numpy as np
+import copy
 import progressbar
 import os
 import re
@@ -7,30 +8,45 @@ import random
 from utils import load_samples, save_samples
 
 kDataRoot = "C:/Users/JM/Desktop/Data/ETRIrelated/BMVC"
-kActionRoot = os.path.join(kDataRoot, "etri_action_data_neck_point_0_0")
+kActionRoot = os.path.join(kDataRoot, "etri_action_data")
 kActionLen = 30
-kPoseBaseIdx = 18
+kKeypointType = 14
 nosing_rate = 0.1
-nNoisePoint = 3
+nNoisePoint = int(kKeypointType * kActionLen * nosing_rate)
 
 
-def generation_dirty_samples(_poselet, ):
+def generation_dirty_samples(_poselet ):
 
-    noise_poselet = _poselet
-    noise_index = random.shuffle(list(range(0, kPoseBaseIdx * kActionLen)))
+    noise_index = random.shuffle(list(range(0, kKeypointType * kActionLen)))
 
-    for idx in noise_index:
-        _poselet[2 * idx + 0] = 0
-        _poselet[2 * idx + 1] = 0
+    start_idx = 0
+    end_idx = nNoisePoint
+    n_iter = int(kKeypointType * kActionLen / nNoisePoint)
+    for i in range(n_iter):
+        for idx in range(start_idx, end_idx):
+            noise_poselet = copy.deepcopy(_poselet)
+            frame_idx = int(idx/kKeypointType)
+            point_idx = int(idx%kKeypointType)
 
-    return noise_poselet
+            print(frame_idx, point_idx)
+
+            noise_poselet[frame_idx][2 * point_idx + 0] = 0
+            noise_poselet[frame_idx][2 * point_idx + 1] = 0
+
+
+        #np.save()
+
+        #start_idx += nNoisePoint
+        #end_idx += nNoisePoint
+
+    #return noise_poselet
 
 if __name__ == "__main__":
     all_data, _, file_names = load_samples(kActionRoot)
 
-    print(all_data[0].shape)
-
-    num_files = len(all_data)
+    #num_files = len(all_data)
+    num_files = 1
     for i in progressbar.progressbar(range(num_files)):
 
-        all_data[i] = make_some_noise(all_data[i])
+        generation_dirty_samples(all_data[i])
+
