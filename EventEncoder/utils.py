@@ -11,6 +11,7 @@ def load_samples(data_path, num_data=None):
 
     action_data, action_info, action_file_name = [], [], []
     file_paths = glob.glob(os.path.join(data_path, '*.npy'))
+    file_paths.sort()
 
     print('Load data...')
     num_files = len(file_paths) if num_data is None else num_data
@@ -28,6 +29,22 @@ def load_samples(data_path, num_data=None):
         action_info.append(file_infos)
 
     return np.expand_dims(action_data, axis=3), action_info, action_file_name
+
+
+def combine_input_and_target(input_file_names, target_file_names):
+    input_file_names.sort()
+    target_file_names.sort()
+
+    input_target_index_pairs = []
+
+    input_idx = 0
+    for i, file_name in enumerate(target_file_names):
+        while input_idx < len(input_file_names) and \
+                        file_name in input_file_names[input_idx]:
+            input_target_index_pairs.append((input_idx, i))
+            input_idx += 1
+
+    return input_target_index_pairs
 
 
 def save_samples(save_path, result_data, file_names):
