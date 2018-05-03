@@ -4,6 +4,54 @@ from keras.layers.normalization import BatchNormalization
 from keras import regularizers
 
 
+def ConvVAE(num_filters, kernel_sizes, num_z, input_shape=(30, 36, 1)):
+
+    assert (len(num_filters) == len(kernel_sizes))
+
+    last_kernel_size = input_shape[0]
+    for sk in kernel_sizes:
+        last_kernel_size -= (sk - 1)
+        assert(0 < last_kernel_size)
+
+    num_layers = len(num_filters)
+
+    encoder = Sequential()
+    encoder.add(Conv2D(num_filters[0], (kernel_sizes[0], input_shape[1]), input_shape=input_shape))
+    encoder.add(BatchNormalization())
+    encoder.add(Activation('relu'))
+
+    # for convolutional layers
+    conv_layer_params = [(num_filters[i], kernel_sizes[i]) for i in range(1, num_layers)]
+    conv_layer_params.append((num_z, last_kernel_size))
+
+    for (num_filter, kernel_size) in conv_layer_params:
+        encoder.add(Conv2D(num_filter, (kernel_size, 1)))
+        encoder.add(BatchNormalization())
+        encoder.add(Activation('relu'))
+
+    #TODO: complete below
+
+    # for deconvolutional layers
+    num_filters = num_filters[::-1]
+    num_filters.append(input_shape[2])
+    kernel_sizes.append(last_kernel_size)
+    kernel_sizes = kernel_sizes[::-1]
+    _deconv_settings = [(num_filters[i], kernel_sizes[i]) for i in range(len(num_filters))]
+    _input_width = 1
+    for i, (num_filter, kernel_size) in enumerate(_deconv_settings):
+        if i + 1 == len(_deconv_settings):
+            _input_width = input_shape[1]
+        encoder.add(Conv2DTranspose(num_filter, (kernel_size, _input_width)))
+        encoder.add(BatchNormalization())
+        if i + 1 == len(_deconv_settings):
+            # encoder.add(Activation('tanh'))
+            pass
+        else:
+            encoder.add(Activation('relu'))
+
+    return encoder
+
+
 def ConvAE(_num_fs, _sz_ks, _numz, _input_shape=(30, 36, 1)):
 
     assert (len(_num_fs) == len(_sz_ks))
