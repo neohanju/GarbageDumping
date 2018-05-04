@@ -29,8 +29,12 @@ attributes = {...
 kX0Pos = 7;
 
 % load annotation
-[filepath, filename, ~] = fileparts(anno_path);
+[filepath, ~, ~] = fileparts(anno_path);
 load(anno_path);  % read 'annolist'
+
+% get image folder name
+image_path = strsplit(annolist(1).image.name, '/');
+set_name = image_path{end-1};
 
 % read annotation data and save them into 2D matrix
 num_frames = length(annolist);
@@ -66,7 +70,7 @@ for i = 1:num_frames
 end
 
 T = array2table(csvdata, 'VariableNames', attributes);
-writetable(T, fullfile(filepath, [filename, '.csv']));
+writetable(T, fullfile(filepath, [set_name, '.csv']));
 
 end
 

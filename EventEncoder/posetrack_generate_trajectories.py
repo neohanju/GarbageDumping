@@ -15,7 +15,7 @@ def load_posetrack_csv_annotation(anno_path):
         for row in reader:
             dict_list.append(row)
 
-    return {'filename': os.path.basename(anno_path).split('_relpath')[0],
+    return {'setname': os.path.basename(anno_path).split('.')[0],
             'annotations': dict_list}
 
 
@@ -46,7 +46,7 @@ def load_coco_keypoints(keypoints_dir):
 
         detections.append(cur_frame_dict)
 
-    return {'filename': '_'.join(dir_name.split('_')[0:-1]),
+    return {'setname': '_'.join(dir_name.split('_')[0:-1]),
             'detections': detections}
 
 
@@ -77,7 +77,7 @@ def is_keypoints_in_bbox(keypoints, bbox):
 
 def get_trajectories(posetrack_annotation, coco_keypoint):
 
-    assert(posetrack_annotation['filename'] == coco_keypoint['filename'])
+    assert(posetrack_annotation['setname'] == coco_keypoint['setname'])
 
     # for allocation
     max_track_id = 0
@@ -151,8 +151,8 @@ def save_trajectories_from_all(save_base_path,
     for posetrack_annotation in posetrack_annos:
         left_coco_keypoints = []
         for coco_keypoint in coco_keypoints:
-            if posetrack_annotation['filename'] == coco_keypoint['filename']:
-                save_trajectories(os.path.join(save_base_path, posetrack_annotation['filename'] + '.txt'),
+            if posetrack_annotation['setname'] == coco_keypoint['setname']:
+                save_trajectories(os.path.join(save_base_path, posetrack_annotation['setname'] + '.txt'),
                                   get_trajectories(posetrack_annotation, coco_keypoint))
             else:
                 left_coco_keypoints.append(coco_keypoint)
