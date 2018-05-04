@@ -1,4 +1,4 @@
-k_posetrack_anno_path = '/home/neohanju/Workspace/dataset/posetrack/annotations/val';
+k_posetrack_anno_path = '/home/neohanju/Workspace/dataset/posetrack/annotations/train';
 anno_files = dir(fullfile(k_posetrack_anno_path, '*.mat'));
 
 for i = 1:length(anno_files)
