@@ -126,9 +126,9 @@ def get_trajectories(posetrack_annotation, coco_keypoint):
             for detections in current_coco_detections:
                 for keypoints in detections['keypoints']:
                     if is_keypoints_in_bbox(keypoints, bbox):
-                        # [track_id, is_suspect(0), imgnum, keypoints..., is_trhow_garbage(0)]
+                        # [track_id, is_suspect(1), imgnum, keypoints..., is_trhow_garbage(0)]
                         cur_trajectory.append(
-                            [int(pose['track_id']), 0, int(pose['frameNumber'])] + keypoints + [0])
+                            [int(pose['track_id']), 1, int(pose['frameNumber'])] + keypoints + [0])
 
         result_trajectories.append(cur_trajectory)
 
