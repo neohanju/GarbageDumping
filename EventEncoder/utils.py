@@ -6,6 +6,16 @@ import glob
 from time import localtime, strftime
 
 
+def make_dir(path):
+    # if there is no directory, make a directory.
+    if not os.path.exists(path):
+        try:
+            os.makedirs(path)
+        except OSError:
+            print('ERROR: Cannot make saving folder')
+    return
+
+
 # loading data samples and parsing their parameters from their file name
 def load_samples(data_path, num_data=None):
 
@@ -48,7 +58,7 @@ def combine_input_and_target(input_file_names, target_file_names):
 
 
 def save_samples(save_path, result_data, file_names):
-    os.mkdir(save_path)
+    make_dir(save_path)
     print('Save network outputs...')
     for i in progressbar.progressbar(range(len(file_names))):
         full_file_path = os.path.join(save_path, file_names[i] + "-recon.npy")
