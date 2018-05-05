@@ -77,5 +77,18 @@ def get_time_string():
     strftime("%y%m%d-%H%M%S", localtime())
 
 
+def intersection_over_union(box1, box2):
+    # box: [x1, y1, x2, y2]
+    inter_x1, inter_y1 = max(box1[0], box2[0]), max(box1[1], box2[1])
+    inter_x2, inter_y2 = min(box1[2], box2[2]), min(box1[3], box2[3])
+    if inter_x1 > inter_x2 or inter_y1 > inter_y2:
+        return 0.0
+    inter_area = (inter_x2 - inter_x1) * (inter_y2 - inter_y1)
+    area1 = (box1[2] - box1[0]) * (box1[3] - box1[1])
+    area2 = (box2[2] - box2[0]) * (box2[3] - box2[1])
+    return inter_area / (area1 + area2 - inter_area)
+
+
+
 # ()()
 # ('') HAANJU.YOO

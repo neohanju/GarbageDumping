@@ -3,17 +3,22 @@ import csv
 import json
 import glob
 import progressbar
+from collections import OrderedDict
+from utils import intersection_over_union
 
-kPosetrackCSVAnnotationBasePath = '/home/neohanju/Workspace/dataset/posetrack/annotations/csv'
 kCOCOKeypointsBasePath = '/home/neohanju/Workspace/dataset/posetrack/keypoints_COCO'
+kHaanjuHome = '/home/neohanju/Workspace/dataset'
+kJMHome = 'C:/Users/JM/Desktop/Data/ETRIrelated/BMVC'
 
+kCurrentHome = kJMHome
+kPosetrackCSVAnnotationBasePath = os.path.join(kCurrentHome, 'posetrack/annotations/csv')
+kCOCOKeypointsBasePath = os.path.join(kCurrentHome, 'posetrack/keypoints_COCO')
 
 def load_posetrack_csv_annotation(anno_path):
-    dict_list = []
     with open(anno_path, 'r') as csvfile:
-        reader = csv.DictReader(csvfile)
-        for row in reader:
-            dict_list.append(row)
+        reader = csv.reader(csvfile)
+        keys = next(reader)
+        dict_list = [OrderedDict(zip(keys, row)) for row in reader]
 
     return {'setname': os.path.basename(anno_path).split('.')[0],
             'annotations': dict_list}
@@ -51,13 +56,15 @@ def load_coco_keypoints(keypoints_dir):
 
 
 def load_coco_keypoints_all(keypoints_base_dir=kCOCOKeypointsBasePath):
-    dir_name_list = next(os.walk(keypoints_base_dir))[1]
-    dir_name_list.sort()
+    parent_dir_name_list = next(os.walk(keypoints_base_dir))[1]
+    parent_dir_name_list.sort()
+    path_list = []
+    for parent_dir in parent_dir_name_list:
+        child_dir_name_list = next(os.walk(os.path.join(keypoints_base_dir, parent_dir)))[1]
+        path_list += [os.path.join(keypoints_base_dir, parent_dir, current_dir) for current_dir in child_dir_name_list]
 
-    dict_list = []
     print('>> Read keypoints from COCO model')
-    for i in progressbar.progressbar(range(len(dir_name_list))):
-        dict_list.append(load_coco_keypoints(os.path.join(keypoints_base_dir, dir_name_list[i])))
+    dict_list = [load_coco_keypoints(path_list[i]) for i in progressbar.progressbar(range(len(path_list)))]
 
     return dict_list
 
@@ -68,16 +75,15 @@ def is_keypoints_in_bbox(keypoints, bbox):
     [xmin, ymin, xmax, ymax] = bbox
     point_check_list = [1, 2, 5]
     for check_idx in point_check_list:
-        if xmin > keypoints[3*check_idx] or xmax < keypoints[3*check_idx]:
+        if xmin > keypoints[3 * check_idx] or xmax < keypoints[3 * check_idx]:
             return False
-        if ymin > keypoints[3*check_idx+1] or ymax < keypoints[3*check_idx+1]:
+        if ymin > keypoints[3 * check_idx + 1] or ymax < keypoints[3 * check_idx + 1]:
             return False
     return True
 
 
 def get_trajectories(posetrack_annotation, coco_keypoint):
-
-    assert(posetrack_annotation['setname'] == coco_keypoint['setname'])
+    assert (posetrack_annotation['setname'] == coco_keypoint['setname'])
 
     # for allocation
     max_track_id = 0
@@ -85,23 +91,34 @@ def get_trajectories(posetrack_annotation, coco_keypoint):
         if max_track_id < int(cur_anno['track_id']):
             max_track_id = int(cur_anno['track_id'])
 
-    anno_with_ID = [[] for i in range(max_track_id + 1)]
+    # clustering with track ID and set bounding box
+    anno_with_ID = [[] for _ in range(max_track_id + 1)]
     for cur_anno in posetrack_annotation['annotations']:
+        x0_idx = list(cur_anno.keys()).index("x0")
+        keypoints = list(cur_anno.items())[x0_idx:x0_idx+15*3]  # list of tuples like [('x0', '213'), ...]
+        xs = [float(point[1]) for point in keypoints[0::3] if float(point[1]) != 0]
+        ys = [float(point[1]) for point in keypoints[1::3] if float(point[1]) != 0]
+        cur_anno['bbox'] = [min(xs), min(ys), max(xs), max(ys)]
         anno_with_ID[int(cur_anno['track_id'])].append(cur_anno)
+
+    # calculate bounding box of coco model's keypoints
+    for frame_info in coco_keypoint['detections']:
+        frame_info['bbox'] = []
+        for keypoints in frame_info['keypoints']:
+            xs, ys = [], []
+            for p in range(0, len(keypoints), 3):
+                if 0 == keypoints[p + 2]:
+                    continue
+                xs.append(keypoints[p])
+                ys.append(keypoints[p + 1])
+            frame_info['bbox'].append([min(xs), min(ys), max(xs), max(ys)])
 
     result_trajectories = []
     for person in anno_with_ID:
         coco_idx = 0
         cur_trajectory = []
         for pose in person:
-            # {frameNumber, head_x1, head_y1, head_x2, head_y2, track_id, x0, y0, is_visible_0 ... x14, y14, is_visible_14}
-
-            # get bounding box range
-            x0_idx = list(pose.keys()).index("x0")
-            keypoints = list(pose.items())[x0_idx:]  # list of tuples like [('x0', '213'), ...]
-            xs = [float(point[1]) for point in keypoints[0::3] if float(point[1]) != 0]
-            ys = [float(point[1]) for point in keypoints[1::3] if float(point[1]) != 0]
-            bbox = [min(xs), min(ys), max(xs), max(ys)]
+            # {bbox, frameNumber, head_x1, head_y1, head_x2, head_y2, track_id, x0, y0, is_visible_0 ... x14, y14, is_visible_14}
 
             # find concurrent coco keypoints
             while coco_idx < len(coco_keypoint['detections']):
@@ -114,21 +131,28 @@ def get_trajectories(posetrack_annotation, coco_keypoint):
                 # there is no concurrent keypoint
                 continue
 
-            current_coco_detections = []
-            while coco_idx < len(coco_keypoint['detections']):
-                if int(coco_keypoint['detections'][coco_idx]['frameNumber']) == int(pose['frameNumber']):
-                    current_coco_detections.append(coco_keypoint['detections'][coco_idx])
-                    coco_idx += 1
-                else:
-                    break
+            # current_coco_detections = []
+            # while coco_idx < len(coco_keypoint['detections']):
+            #     if int(coco_keypoint['detections'][coco_idx]['frameNumber']) == int(pose['frameNumber']):
+            #         current_coco_detections.append(coco_keypoint['detections'][coco_idx])
+            #         coco_idx += 1
+            #     else:
+            #         break
 
-            # find matched keypoint among concurrent keypoints
-            for detections in current_coco_detections:
-                for keypoints in detections['keypoints']:
-                    if is_keypoints_in_bbox(keypoints, bbox):
-                        # [track_id, is_suspect(1), imgnum, keypoints..., is_trhow_garbage(0)]
-                        cur_trajectory.append(
-                            [int(pose['track_id']), 1, int(pose['frameNumber'])] + keypoints + [0])
+            # find matching keypoint among concurrent keypoints
+            # criterion: largest I.O.U.(intersection over union)
+            # but, neck and shoulders of max I.O.U. must be included by annotation box
+
+            detection = coco_keypoint['detections'][coco_idx]
+            if 0 == len(detection['keypoints']):
+                continue
+
+            bbox_iou = [intersection_over_union(pose['bbox'], detection['bbox'][i])
+                        for i, keypoints in enumerate(detection['keypoints'])]
+            max_iou_pos = bbox_iou.index(max(bbox_iou))
+            if is_keypoints_in_bbox(detection['keypoints'][max_iou_pos], pose['bbox']):
+                cur_trajectory.append(
+                    [int(pose['track_id']), 1, int(pose['frameNumber'])] + detection['keypoints'][max_iou_pos] + [0])
 
         result_trajectories.append(cur_trajectory)
 
@@ -162,3 +186,5 @@ def save_trajectories_from_all(save_base_path,
 if "__main__" == __name__:
     save_trajectories_from_all(kCOCOKeypointsBasePath)
 
+# ()()
+# ('') HAANJU.YOO
