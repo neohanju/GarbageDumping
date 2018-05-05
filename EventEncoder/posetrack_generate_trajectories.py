@@ -6,7 +6,6 @@ import progressbar
 from collections import OrderedDict
 from utils import intersection_over_union
 
-kCOCOKeypointsBasePath = '/home/neohanju/Workspace/dataset/posetrack/keypoints_COCO'
 kHaanjuHome = '/home/neohanju/Workspace/dataset'
 kJMHome = 'C:/Users/JM/Desktop/Data/ETRIrelated/BMVC'
 

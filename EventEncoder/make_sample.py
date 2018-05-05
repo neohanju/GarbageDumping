@@ -7,15 +7,18 @@ import progressbar
 
 
 params = {'step':      10,  # step은 한번 sample을 뽑고 몇 frame 이동 후에 뽑을지 결정합니다.
-          'interval':  60,  # interval은 sample을 최대 몇 frame 연속으로 이어 붙일지를 결정합니다.
+          'interval':  30,  # interval은 sample을 최대 몇 frame 연속으로 이어 붙일지를 결정합니다.
           'threshold': 30,  # sample을 만들 때 투기 pose가 threshold값 이상이라면 sample도 투기로 labeling합니다.
           'posi_label': 1
           }
 
 
-kBasePath = "D:/workspace/data/BMVC/"
-kKeypointBasePath = os.path.join(kBasePath, "processed_keypoints")
-kSaveActionPath = os.path.join(kBasePath, "etri_action_data")
+kBasePath = "C:/Users/JM/Desktop/Data/ETRIrelated/BMVC/posetrack/"
+kKeypointBasePath = os.path.join(kBasePath, "posetrack_coco_processed")
+kSaveActionPath = os.path.join(kBasePath, "posetrack_action_data")
+
+kNumKeypointTypes = 14
+kOriginCoord = 0
 
 
 class MakeAction():
@@ -44,7 +47,7 @@ class MakeAction():
 
         return data
 
-    def make_action_data(self, _file_number, pose_data):
+    def make_action_data(self, _file_name, pose_data):
         action_data = []
         sample_info = []
         for person_id in pose_data.keys():
@@ -73,7 +76,7 @@ class MakeAction():
                     # break
 
                 # sample 정보 저장(file number, pose 시작 frame number, pose 끝 frame number
-                sample_info.append([_file_number, person_id, frame_key[start], frame_key[end]])
+                sample_info.append([_file_name, person_id, frame_key[start], frame_key[end]])
 
                 # first frame info
                 first_frame_neck = [cur_person[frame_key[start]][3 * 1 + 0], cur_person[frame_key[start]][3 * 1 + 1]]
@@ -98,7 +101,7 @@ class MakeAction():
                     # print("next:", tmp_list)
 
                     action.append([])
-                    for j in range(18):
+                    for j in range(kNumKeypointTypes):
                         # action_data[-1].append(tmp_list[j])
                         action[-1].append(tmp_list[3 * j + 0])
                         action[-1].append(tmp_list[3 * j + 1])
@@ -117,15 +120,15 @@ class MakeAction():
                     # action_data[-1].append(0)
                     class_label = 0
 
-                str_neck_x = format(first_frame_neck[0] + 100, '4.3f')
-                str_neck_y = format(first_frame_neck[1] + 100, '4.3f')
+                str_neck_x = format(first_frame_neck[0] + kOriginCoord, '4.3f')
+                str_neck_y = format(first_frame_neck[1] + kOriginCoord, '4.3f')
                 str_dist = format(first_frame_dist, '4.3f')
 
                 str_neck_x = str_neck_x.replace('.', '_')
                 str_neck_y = str_neck_y.replace('.', '_')
                 str_dist = str_dist.replace('.', '_')
-                save_file_name = "%03d-%02d-%04d-%03d-%02d-%s-%s-%s-%d.npy" \
-                                 % (_file_number, person_id, frame_key[start], params['interval'], params['step'],
+                save_file_name = "%s-%02d-%04d-%03d-%02d-%s-%s-%s-%d.npy" \
+                                 % (_file_name, person_id, frame_key[start], params['interval'], params['step'],
                                     str_neck_x, str_neck_y, str_dist, class_label)
 
                 action = np.asarray(action)
@@ -144,8 +147,6 @@ class MakeAction():
         kXIdx = 0
         kYIdx = 1
         kConfidencIdx = 2
-        kNumKeypointTypes = 18
-        kOriginCoord = 100
 
         if isinstance(_neck, list):
             _neck = np.array(_neck)
@@ -202,9 +203,10 @@ class MakeAction():
         num_of_file = len(file_list)
         for i in progressbar.progressbar(range(num_of_file)):
             file_name = file_list[i]
-            file_number = int(file_name.split(".")[0])
+            # file_number = int(file_name.split(".")[0])
             labeled_data = self.read_labeled_data(file_name)
-            tmp_action, tmp_info = self.make_action_data(file_number, labeled_data)
+            file_name = file_name.split(".")[0] # .replace("_", "-")
+            tmp_action, tmp_info = self.make_action_data(file_name, labeled_data)
 
             if not action:
                 action = tmp_action
