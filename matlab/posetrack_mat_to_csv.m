@@ -53,11 +53,16 @@ for i = 1:num_frames
         
         [~, frame_number, ~] = fileparts(annolist(i).image.name);
         
-        cur_rect = annolist(i).annorect(j);        
+        cur_rect = annolist(i).annorect(j);       
         cur_record = zeros(1, length(attributes));
         cur_record(1) = str2num(frame_number);
         cur_record(2:6) = ...
             [cur_rect.x1, cur_rect.y1, cur_rect.x2, cur_rect.y2, cur_rect.track_id];
+        if min(cur_record(2:6)) < -1000
+            % invalid annotation (sometimes, there is a negative value for
+            % head rect, so give -1000 to comparison)
+            continue;
+        end
         
         cur_points = cur_rect.annopoints.point;
         for k = 1:length(cur_points)
