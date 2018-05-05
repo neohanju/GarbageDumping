@@ -80,38 +80,84 @@
 #include "opencv2/opencv.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include "haanju_utils.hpp"
+#include "dirent.h"
 
 
 #define KEYPOINTS_BASE_PATH ("keypoints")
 #define RESULT_PATH ("keypoints\\processed")
-
+const std::string kExtension("txt");
 
 int main(int argc, char** argv)
 {	
-	for (int vIdx = 1; vIdx <= 219; ++vIdx)
-	//for (int vIdx = 41; vIdx <= 41; ++vIdx)
+	DIR *dir;
+	struct dirent *entry;
+
+	std::vector<std::string> vecTrajectoryFileNames;
+	if ((dir = opendir(KEYPOINTS_BASE_PATH)) != NULL) 
 	{
-		char strKeypointsFileName[128];
-		sprintf_s(strKeypointsFileName, "%06d.txt", vIdx);		
-				
-		// read keypoints
-		std::string strKeypointsFilePath = std::string(KEYPOINTS_BASE_PATH) + "\\" + std::string(strKeypointsFileName);
-		std::vector<hj::KeyPointsSet> vecKeyPointsSet = hj::ReadKeypoints(strKeypointsFilePath);
-		if (0 == vecKeyPointsSet.size())
-			continue;
-
-		// refine keypoints
-		printf("processing %s\n", strKeypointsFileName);
-		std::vector<hj::KeyPointsSet> vecProcessedSet;
-		for (int personIdx = 0; personIdx < vecKeyPointsSet.size(); ++personIdx)
+		/* print all the files and directories within directory */
+		while ((entry = readdir(dir)) != NULL) 
 		{
-			vecProcessedSet.push_back(hj::RefineKeyPointTrajectories(vecKeyPointsSet[personIdx]));
-		}
+			if (entry->d_type != DT_REG)
+				continue;
 
-		// write result keypoints
-		std::string strResultFilePath = std::string(RESULT_PATH) + "\\" + std::string(strKeypointsFileName);
-		hj::WriteKeypoints(strResultFilePath, vecProcessedSet);
-	}	
+			// if entry is a regular file
+			std::string strFileName = entry->d_name;	// filename												
+			if (strFileName.find(kExtension, (strFileName.length() - kExtension.length())) != std::string::npos)
+			{
+				// read keypoints
+				std::string strKeypointsFilePath = std::string(KEYPOINTS_BASE_PATH) + "\\" + strFileName;
+				std::vector<hj::KeyPointsSet> vecKeyPointsSet = hj::ReadKeypoints(strKeypointsFilePath);
+				if (0 == vecKeyPointsSet.size())
+					continue;
+
+				// refine keypoints
+				printf("processing %s\n", strFileName.c_str());
+				std::vector<hj::KeyPointsSet> vecProcessedSet;
+				for (int personIdx = 0; personIdx < vecKeyPointsSet.size(); ++personIdx)
+				{
+					vecProcessedSet.push_back(hj::RefineKeyPointTrajectories(vecKeyPointsSet[personIdx]));
+				}
+
+				// write result keypoints
+				std::string strResultFilePath = std::string(RESULT_PATH) + "\\" + strFileName;
+				hj::WriteKeypoints(strResultFilePath, vecProcessedSet);
+			}				
+		}
+		closedir(dir);
+	}
+	else {
+		/* could not open directory */
+		perror("");
+		return EXIT_FAILURE;
+	}
+
+
+
+	//for (int vIdx = 1; vIdx <= 219; ++vIdx)
+	////for (int vIdx = 41; vIdx <= 41; ++vIdx)
+	//{
+	//	char strKeypointsFileName[128];
+	//	sprintf_s(strKeypointsFileName, "%06d.txt", vIdx);		
+	//			
+	//	// read keypoints
+	//	std::string strKeypointsFilePath = std::string(KEYPOINTS_BASE_PATH) + "\\" + std::string(strKeypointsFileName);
+	//	std::vector<hj::KeyPointsSet> vecKeyPointsSet = hj::ReadKeypoints(strKeypointsFilePath);
+	//	if (0 == vecKeyPointsSet.size())
+	//		continue;
+
+	//	// refine keypoints
+	//	printf("processing %s\n", strKeypointsFileName);
+	//	std::vector<hj::KeyPointsSet> vecProcessedSet;
+	//	for (int personIdx = 0; personIdx < vecKeyPointsSet.size(); ++personIdx)
+	//	{
+	//		vecProcessedSet.push_back(hj::RefineKeyPointTrajectories(vecKeyPointsSet[personIdx]));
+	//	}
+
+	//	// write result keypoints
+	//	std::string strResultFilePath = std::string(RESULT_PATH) + "\\" + std::string(strKeypointsFileName);
+	//	hj::WriteKeypoints(strResultFilePath, vecProcessedSet);
+	//}	
 	
 	return 0;
 }
