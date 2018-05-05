@@ -296,5 +296,4 @@ EventEncoder/recon_result
 
 EventEncoder/training_results
 
-
-keypoint_smoothing/GarbageDumping/keypoints/*.txt
+keypoint_smoothing/GarbageDumping/keypoints
