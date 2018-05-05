@@ -17,7 +17,7 @@ parser.add_argument('--model', type=str, default='AE', help="types of model. one
 parser.add_argument('--nfs', type=int, default=[1], nargs='+', help='list of numbers of filters.')
 parser.add_argument('--sks', type=int, default=[1], nargs='+', help='list of sizes of kernels.')
 parser.add_argument('--nz', type=int, default=128, help='size of the latent z vector. default=128.')
-parser.add_argument('--input_size', type=int, default=[30, 36, 1], nargs='+', help='input shape. default=[30, 36, 1].')
+parser.add_argument('--input_size', type=int, default=[30, 28, 1], nargs='+', help='input shape. default=[30, 36, 1].')
 # path related ---------------------------------------------------------------
 parser.add_argument('--data_path', type=str, default='/home/jm/etri_action_data/30_10', help='base path of dataset.')
 parser.add_argument('--save_path', type=str, default='training_results', help='model save path.')

@@ -3,8 +3,9 @@ from keras.layers import Dense, Activation, Flatten, Conv2D,  Conv2DTranspose, I
 from keras.layers.normalization import BatchNormalization
 from keras import regularizers
 
+kDefaultInputShape = (30, 28, 1)
 
-def ConvEncoder(num_filters, kernel_sizes, num_z, input_shape=(30, 36, 1)):
+def ConvEncoder(num_filters, kernel_sizes, num_z, input_shape=kDefaultInputShape):
     assert (len(num_filters) == len(kernel_sizes))
 
     last_kernel_size = input_shape[0]
@@ -29,7 +30,7 @@ def ConvEncoder(num_filters, kernel_sizes, num_z, input_shape=(30, 36, 1)):
     return encoder
 
 
-def ConvDecoder(num_filters, kernel_sizes, num_z, output_shape=(30, 36, 1)):
+def ConvDecoder(num_filters, kernel_sizes, num_z, output_shape=kDefaultInputShape):
     # TODO: check filter and kernel setting
     num_layers = len(num_filters)
     decoder_settings = [(num_filters[i], kernel_sizes[i]) for i in range(1, num_layers)]
@@ -50,7 +51,7 @@ def ConvDecoder(num_filters, kernel_sizes, num_z, output_shape=(30, 36, 1)):
     return decoder
 
 
-def ConvAE(num_filters, kernel_sizes, num_z, input_shape=(30, 36, 1)):
+def ConvAE(num_filters, kernel_sizes, num_z, input_shape=kDefaultInputShape):
 
     assert (len(num_filters) == len(kernel_sizes))
 
@@ -77,7 +78,7 @@ def ConvAE(num_filters, kernel_sizes, num_z, input_shape=(30, 36, 1)):
     # output layer of autoencoder
     autoencoder.add(Conv2D(num_z, (last_kernel_size, 1)))
     autoencoder.add(BatchNormalization())
-    autoencoder.add(Activation('relu', name='latent'))
+    autoencoder.add(Activation('tanh', name='latent'))
 
     # for deconvolutional layers
     dec_num_filters = num_filters[::-1] + [input_shape[2]]
@@ -95,7 +96,7 @@ def ConvAE(num_filters, kernel_sizes, num_z, input_shape=(30, 36, 1)):
     return autoencoder
 
 
-def ConvVAE(num_filters, kernel_sizes, num_z, input_shape=(30, 36, 1)):
+def ConvVAE(num_filters, kernel_sizes, num_z, input_shape=kDefaultInputShape):
 
     assert (len(num_filters) == len(kernel_sizes))
 
