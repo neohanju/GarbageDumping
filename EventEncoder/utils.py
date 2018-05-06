@@ -120,19 +120,19 @@ def combine_input_and_target(input_file_names, target_file_names):
     return input_target_index_pairs
 
 
-def save_samples(save_path, result_data, file_names, postfix='-recon'):
+def save_samples(save_path, result_data, file_infos, postfix='-recon'):
     make_dir(save_path)
     print('Save network outputs...')
-    for i in progressbar.progressbar(range(len(file_names))):
-        full_file_path = os.path.join(save_path, file_names[i] + postfix + ".npy")
+    for i in progressbar.progressbar(range(len(file_infos))):
+        full_file_path = os.path.join(save_path, file_infos[i]['file_name'] + postfix + ".npy")
         np.save(full_file_path, np.squeeze(result_data[i], axis=2))
 
 
-def save_latent_variables(save_path, latent_data, file_names):
+def save_latent_variables(save_path, latent_data, file_infos):
     make_dir(save_path)
     print('Save network outputs...')
-    for i in progressbar.progressbar(range(len(file_names))):
-        full_file_path = os.path.join(save_path, file_names[i] + "-latent.npy")
+    for i in progressbar.progressbar(range(len(file_infos))):
+        full_file_path = os.path.join(save_path, file_infos[i]['file_name'] + "-latent.npy")
         np.save(full_file_path, latent_data[i].flatten())
 
 

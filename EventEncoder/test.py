@@ -21,10 +21,12 @@ if __name__ == "__main__":
     test_info, test_data, _ = load_samples(options.data_path)
     model = load_model(options.model_path)
     predictions = model.predict(test_data)
-    save_samples(os.path.join(options.save_path, 'recons'), predictions[0], test_info['file_name'])
+    save_samples(os.path.join(options.save_path, 'recons'), predictions, test_info)
 
     if options.save_latent:
-        save_latent_variables(os.path.join(options.save_path, 'latents'), predictions[1], test_info['file_name'])
+        encoder = Model(inputs=model.input, outputs=model.get_layer('latent').output)
+        latents = encoder.predict(test_data)
+        save_latent_variables(os.path.join(options.save_path, 'latents'), latents, test_info)
 
 # ()()
 # ('') HAANJU.YOO
