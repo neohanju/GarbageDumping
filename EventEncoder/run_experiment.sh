@@ -25,8 +25,9 @@ num_z="256"
 # #  output:  26,22,18,14,10,6
 # num_z = 128
 
-epochs="20"
-denoising=false
+batch_size="512"
+epochs="20000"
+denoising=true
 
 if [ $denoising = true ]; then
 	denoising="--denoising"
@@ -35,7 +36,7 @@ else
 fi
 
 TRAIN_OPTS="--model $model --data_path $data_path --save_path $RESULT_PATH --tb_path $RESULT_PATH \
-            --epochs $epochs --nfs $num_filters --sks $kernel_sizes --nz $num_z $denoising"
+            --epochs $epochs --nfs $num_filters --sks $kernel_sizes --nz $num_z $denoising --batch_size $batch_size"
 
 python train.py $TRAIN_OPTS |& tee $RESULT_PATH/training.log
 
