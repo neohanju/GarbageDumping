@@ -18,12 +18,14 @@ parser.add_argument('--nfs', type=int, default=[1], nargs='+', help='list of num
 parser.add_argument('--sks', type=int, default=[1], nargs='+', help='list of sizes of kernels.')
 parser.add_argument('--nz', type=int, default=128, help='size of the latent z vector. default=128.')
 parser.add_argument('--input_size', type=int, default=[30, 28, 1], nargs='+', help='input shape. default=[30, 36, 1].')
+parser.add_argument('--denoising', action='store_true', default=False, help="training with denoising. need 'dirty_sample' folder ins 'data_path'")
 # path related ---------------------------------------------------------------
 parser.add_argument('--data_path', type=str, default='/home/jm/etri_action_data/30_10', help='base path of dataset.')
 parser.add_argument('--save_path', type=str, default='training_results', help='model save path.')
 parser.add_argument('--tb_path', type=str, default='training_results', help="tensor board path. default='training_results'")
 # ETC -------------------------------------------------------------------------
 parser.add_argument('--epochs', type=int, default=100, help='number of epochs to train for. default=100')
+parser.add_argument('--batch_size', type=int, default=256, help='size of batch. default=256')
 parser.add_argument('--save_period', type=int, default=50, help='network saving period. default=50')
 parser.add_argument('--random_seed', type=int, help='manual random seed.')
 
@@ -34,8 +36,14 @@ print(options)
 if options.random_seed is None:
     options.random_seed = random.randint(1, 10000)
 
-# check arguments
+# check model arguments
 assert(len(options.nfs) == len(options.sks))
+
+# denoising
+if options.denoising:
+    options.dirty_sample_path = os.path.join(options.data_path, 'dirty_sample')
+else:
+    options.dirty_sample_path = None
 
 
 # =============================================================================
@@ -72,7 +80,7 @@ tbCallBack = callbacks.TensorBoard(log_dir=options.tb_path, histogram_freq=0, wr
 def train_network(opts):
 
     # load data
-    action_data, action_info, _ = load_samples(opts.data_path)
+    action_info, action_data, target_data = load_samples(opts.data_path, options.dirty_sample_path)
 
     # construct model
     # TODO: construct model depends on option argument
@@ -83,7 +91,7 @@ def train_network(opts):
     callback_list = [tbCallBack, BestLossCallBack(model, opts.save_path, opts.save_period)]
 
     model.compile(optimizer='rmsprop', loss='mse')
-    model.fit(action_data, action_data, epochs=opts.epochs, callbacks=callback_list, shuffle=True)
+    model.fit(action_data, target_data, epochs=opts.epochs, batch_size=opts.batch_size, callbacks=callback_list, shuffle=True)
 
 
 if __name__ == "__main__":
