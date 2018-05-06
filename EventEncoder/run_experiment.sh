@@ -13,7 +13,7 @@ echo " ===< TRAINING >==========================================================
 echo ""
 
 # other options
-model="VAE"
+model="AE"
 
 num_filters="512 256 128"
 kernel_sizes="8 8 8"

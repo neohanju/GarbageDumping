@@ -4,7 +4,7 @@ import os
 
 from keras import callbacks
 
-from models import ConvAE, ConvVAE
+from models import ConvAE #, ConvVAE, vanila_autoencoder_loss, vae_loss
 from utils import load_samples, get_time_string
 
 
@@ -85,18 +85,20 @@ def train_network(opts):
     # construct model
     if 'AE' == opts.model:
         model = ConvAE(opts.nfs, opts.sks, opts.nz, opts.input_size)
-    elif 'VAE' == opts.model:
-        model = ConvVAE(opts.nfs, opts.sks, opts.nz, opts.input_size)
+
+    # elif 'VAE' == opts.model:
+    #     model = ConvVAE(opts.nfs, opts.sks, opts.nz, opts.input_size)
+    #     model.compile(optimizer='rmsprop', loss=vae_loss)
+    #     model.fit(inputs=[action_data, target_data], epochs=opts.epochs, batch_size=opts.batch_size,
+    #               callbacks=[tbCallBack, BestLossCallBack(model, opts.save_path, opts.save_period)], shuffle=True)
     else:
         print('There is no proper model for option: ' + opts.model)
         return
 
-    # generate callback lists
-    callback_list = [tbCallBack, BestLossCallBack(model, opts.save_path, opts.save_period)]
-
-    model.compile(optimizer='rmsprop')
-    model.fit([action_data, target_data], epochs=opts.epochs, batch_size=opts.batch_size, callbacks=callback_list, shuffle=True)
-
+    # training
+    model.compile(optimizer='rmsprop', loss='mse')
+    model.fit(action_data, target_data, epochs=opts.epochs, batch_size=opts.batch_size,
+              callbacks=[tbCallBack, BestLossCallBack(model, opts.save_path, opts.save_period)], shuffle=True)
 
 if __name__ == "__main__":
 

@@ -54,27 +54,30 @@ def ConvAE(num_filters, kernel_sizes, num_z, input_shape=kDefaultInputShape):
 
     autoencoder.summary()
 
-    # for denoising autoencoder
-    input_sample = Input(shape=input_shape)
-    target_sample = Input(shape=input_shape)
-    recon_sample = autoencoder(input_sample)
-    autoencoder_model = Model(inputs=[input_sample, target_sample], outputs=[recon_sample, autoencoder.get_layer('latent').output])
+    # # for denoising autoencoder
+    # input_sample = Input(shape=input_shape)
+    # target_sample = Input(shape=input_shape)
+    # recon_sample = autoencoder(input_sample)
+    # autoencoder_model = Model(inputs=[input_sample, target_sample], outputs=[recon_sample, autoencoder.get_layer('latent').output])
+    #
+    # # loss
+    # mse_loss = float(input_shape[0]) * float(input_shape[1]) * metrics.mse(target_sample, recon_sample)
+    # autoencoder_model.add_loss(K.mean(mse_loss))
+    #
+    # return autoencoder_model
+    return autoencoder
 
-    # loss
-    mse_loss = float(input_shape[0]) * float(input_shape[1]) * metrics.mse(target_sample, recon_sample)
-    autoencoder_model.add_loss(K.mean(mse_loss))
 
-    return autoencoder_model
-    # return autoencoder
+def vanila_autoencoder_loss(model_inputs, model_outputs):
+    _, target_sample = model_inputs
+    recon_sample, _ = model_outputs
+    return float(K.shape(target_sample)[1] * K.shape(target_sample)[2]) * metrics.mse(target_sample, recon_sample)
 
 
 def sampling(args):
     z_mean, z_log_var = args
     epsilon = K.random_normal(shape=K.shape(z_mean), mean=0., stddev=1.0)
     return z_mean + K.exp(z_log_var / 2) * epsilon
-
-
-def vae_loss(target_sample, recon_sample):
 
 
 def ConvVAE(num_filters, kernel_sizes, num_z, input_shape=kDefaultInputShape):
@@ -138,17 +141,24 @@ def ConvVAE(num_filters, kernel_sizes, num_z, input_shape=kDefaultInputShape):
     decoder.summary()
 
     # instantiate VAE model
-    vae = Model(inputs=[input_sample, target_sample], outputs=[recon_sample, z])
+    vae = Model(inputs=[input_sample, target_sample], outputs=[recon_sample, z, z_mean, z_log_var])
     vae.summary()
 
     # Compute VAE loss
     mse_loss = float(input_shape[0]) * float(input_shape[1]) * metrics.mse(target_sample, recon_sample)
     kl_loss = - 0.5 * K.sum(1 + z_log_var - K.square(z_mean) - K.exp(z_log_var), axis=-1)
     vae_loss = K.mean(mse_loss + kl_loss)
-
     vae.add_loss(vae_loss)
 
     return vae
+
+
+def vae_loss(model_inputs, model_outputs):
+    _, target_sample = model_inputs
+    recon_sample, z_mean, z_log_var = model_outputs
+    mse_loss = float(K.shape(target_sample)[1] * K.shape(target_sample)[2]) * metrics.mse(target_sample, recon_sample)
+    kl_loss = - 0.5 * K.sum(1 + z_log_var - K.square(z_mean) - K.exp(z_log_var), axis=-1)
+    return mse_loss + kl_loss
 
 # ()()
 # ('')HAANJU.YOO
