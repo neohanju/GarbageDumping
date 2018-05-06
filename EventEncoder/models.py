@@ -58,7 +58,7 @@ def ConvAE(num_filters, kernel_sizes, num_z, input_shape=kDefaultInputShape):
     input_sample = Input(shape=input_shape)
     target_sample = Input(shape=input_shape)
     recon_sample = autoencoder(input_sample)
-    autoencoder_model = Model(inputs=[input_sample, target_sample], outputs=recon_sample)
+    autoencoder_model = Model(inputs=[input_sample, target_sample], outputs=[recon_sample, autoencoder.get_layer('latent').output])
 
     # loss
     mse_loss = float(input_shape[0]) * float(input_shape[1]) * metrics.mse(target_sample, recon_sample)
@@ -72,6 +72,9 @@ def sampling(args):
     z_mean, z_log_var = args
     epsilon = K.random_normal(shape=K.shape(z_mean), mean=0., stddev=1.0)
     return z_mean + K.exp(z_log_var / 2) * epsilon
+
+
+def vae_loss(target_sample, recon_sample):
 
 
 def ConvVAE(num_filters, kernel_sizes, num_z, input_shape=kDefaultInputShape):
@@ -108,7 +111,7 @@ def ConvVAE(num_filters, kernel_sizes, num_z, input_shape=kDefaultInputShape):
     input_sample = Input(shape=input_shape)
     z_mean = encoder(input_sample)
     z_log_var = encoder(input_sample)
-    latent = Lambda(sampling)([z_mean, z_log_var])
+    z = Lambda(sampling)([z_mean, z_log_var])
 
     # for deconvolutional layers
     dec_num_filters = num_filters[::-1] + [input_shape[2]]
@@ -129,13 +132,13 @@ def ConvVAE(num_filters, kernel_sizes, num_z, input_shape=kDefaultInputShape):
             decoder.add(Activation('relu'))
 
     # reconstruction
-    recon_sample = decoder(latent)
+    recon_sample = decoder(z)
     target_sample = Input(shape=input_shape)
 
     decoder.summary()
 
     # instantiate VAE model
-    vae = Model(inputs=[input_sample, target_sample], outputs=recon_sample)
+    vae = Model(inputs=[input_sample, target_sample], outputs=[recon_sample, z])
     vae.summary()
 
     # Compute VAE loss
