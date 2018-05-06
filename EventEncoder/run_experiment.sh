@@ -38,8 +38,8 @@ fi
 TRAIN_OPTS="--model $model --data_path $data_path --save_path $RESULT_PATH --tb_path $RESULT_PATH \
             --epochs $epochs --nfs $num_filters --sks $kernel_sizes --nz $num_z $denoising --batch_size $batch_size"
 
-python train.py $TRAIN_OPTS |& tee $RESULT_PATH/training.log
-
+#python train.py $TRAIN_OPTS |& tee $(pwd)/$RESULT_PATH/training.log
+python train.py $TRAIN_OPTS
 
 
 echo ""
