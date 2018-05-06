@@ -13,6 +13,8 @@ echo " ===< TRAINING >==========================================================
 echo ""
 
 # other options
+model="AE"
+
 num_filters="512 256 128"
 kernel_sizes="8 8 8"
 #  output:   23,16,9
@@ -24,9 +26,16 @@ num_z="256"
 # num_z = 128
 
 epochs="2000"
+denoising=false
 
-TRAIN_OPTS="--data_path $data_path --save_path $RESULT_PATH --tb_path $RESULT_PATH \
-            --epochs $epochs --nfs $num_filters --sks $kernel_sizes --nz $num_z --denoising"
+if [ $denoising = true ]; then
+	denoising="--denoising"
+else
+	denoising=""
+fi
+
+TRAIN_OPTS="--model $model --data_path $data_path --save_path $RESULT_PATH --tb_path $RESULT_PATH \
+            --epochs $epochs --nfs $num_filters --sks $kernel_sizes --nz $num_z $denoising"
 
 python train.py $TRAIN_OPTS
 

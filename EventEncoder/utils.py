@@ -40,6 +40,13 @@ def parsing_action_file_name(file_name):
     return file_info_dict
 
 
+def load_sample(sample_path):
+    sample = np.load(sample_path)
+    if sample.ndim < 3:
+        sample = np.expand_dims(sample, axis=3)
+    return sample
+
+
 # loading data samples and parsing their parameters from their file name
 def load_samples(data_path, dirty_sample_path=None, num_data=None):
     # return Xs, infos, targets (when dirty samples are ready)
@@ -55,7 +62,7 @@ def load_samples(data_path, dirty_sample_path=None, num_data=None):
         action_info.append(parsing_action_file_name(file_paths[i]))
 
         # sample data
-        action_data.append(np.expand_dims(np.load(file_paths[i]), axis=3))
+        action_data.append(load_sample(file_paths[i]))
 
     if dirty_sample_path is not None and num_data is None:
         assert(os.path.exists(os.path.join(data_path, dirty_sample_path)))
@@ -84,7 +91,7 @@ def load_samples(data_path, dirty_sample_path=None, num_data=None):
             action_info.append(cur_info)
 
             # sample data
-            action_data.append(np.expand_dims(np.load(dirty_file_paths[i]), axis=3))
+            action_data.append(load_sample(dirty_file_paths[i]))
 
             # target data
             target_data.append(action_data[target_idx])
@@ -92,7 +99,9 @@ def load_samples(data_path, dirty_sample_path=None, num_data=None):
         # for reconstruction
         target_data = action_data
 
-    return action_info, action_data, target_data
+    return action_info, np.stack(action_data, axis=0), np.stack(target_data, axis=0)
+
+    # return action_info, np.expand_dims(action_data, axis=3), np.expand_dims(target_data, axis=3)
 
 
 def combine_input_and_target(input_file_names, target_file_names):

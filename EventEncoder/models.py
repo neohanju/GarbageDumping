@@ -1,54 +1,11 @@
 from keras.models import Sequential, Model
-from keras.layers import Dense, Activation, Flatten, Conv2D,  Conv2DTranspose, Input
+from keras.layers import Dense, Activation, Conv2D,  Conv2DTranspose, Input, Lambda
 from keras.layers.normalization import BatchNormalization
+import keras.backend as K
 from keras import regularizers
+from keras import metrics
 
 kDefaultInputShape = (30, 28, 1)
-
-def ConvEncoder(num_filters, kernel_sizes, num_z, input_shape=kDefaultInputShape):
-    assert (len(num_filters) == len(kernel_sizes))
-
-    last_kernel_size = input_shape[0]
-    for sk in kernel_sizes:
-        last_kernel_size -= (sk - 1)
-        assert (0 < last_kernel_size)
-    num_layers = len(num_filters)
-
-    # encoder
-    encoder_settings = [(num_filters[i], kernel_sizes[i]) for i in range(1, num_layers)]
-    encoder_settings.append((num_z, last_kernel_size))
-
-    encoder = Sequential()
-    encoder.add(Conv2D(num_filters[0], (kernel_sizes[0], input_shape[1]), input_shape=input_shape))
-    encoder.add(BatchNormalization())
-    encoder.add(Activation('relu'))
-    for (num_fs, sz_k) in encoder_settings:
-        encoder.add(Conv2D(num_fs, (sz_k, 1)))
-        encoder.add(BatchNormalization())
-        encoder.add(Activation('relu'))
-
-    return encoder
-
-
-def ConvDecoder(num_filters, kernel_sizes, num_z, output_shape=kDefaultInputShape):
-    # TODO: check filter and kernel setting
-    num_layers = len(num_filters)
-    decoder_settings = [(num_filters[i], kernel_sizes[i]) for i in range(1, num_layers)]
-    output_tensor_width = 1
-
-    decoder = Sequential()
-    decoder.add(Conv2DTranspose(num_filters[0], (kernel_sizes[0], 1), input_shape=(1, 1, num_z)))
-    decoder.add(BatchNormalization())
-    decoder.add(Activation('relu'))
-    for i, (num_fs, sz_k) in enumerate(decoder_settings):
-        if i + 1 == len(decoder_settings):
-            output_tensor_width = output_shape[1]
-        decoder.add(Conv2DTranspose(num_fs, (sz_k, output_tensor_width)))
-        decoder.add(BatchNormalization())
-        if i >= len(decoder_settings):
-            decoder.add(Activation('relu'))
-
-    return decoder
 
 
 def ConvAE(num_filters, kernel_sizes, num_z, input_shape=kDefaultInputShape):
@@ -78,7 +35,7 @@ def ConvAE(num_filters, kernel_sizes, num_z, input_shape=kDefaultInputShape):
     # output layer of autoencoder
     autoencoder.add(Conv2D(num_z, (last_kernel_size, 1)))
     autoencoder.add(BatchNormalization())
-    autoencoder.add(Activation('tanh', name='latent'))
+    autoencoder.add(Activation('linear', name='latent'))
 
     # for deconvolutional layers
     dec_num_filters = num_filters[::-1] + [input_shape[2]]
@@ -89,11 +46,32 @@ def ConvAE(num_filters, kernel_sizes, num_z, input_shape=kDefaultInputShape):
     # decoder
     for i, (num_fs, sz_k, ch) in enumerate(decoder_settings):
         autoencoder.add(Conv2DTranspose(num_fs, (sz_k, ch)))
-        if i + 1 < num_layers:
-            autoencoder.add(BatchNormalization())
+        autoencoder.add(BatchNormalization())
+        if i + 1 == num_layers:
+            autoencoder.add(Activation('linear'))
+        else:
             autoencoder.add(Activation('relu'))
 
-    return autoencoder
+    autoencoder.summary()
+
+    # for denoising autoencoder
+    input_sample = Input(shape=input_shape)
+    target_sample = Input(shape=input_shape)
+    recon_sample = autoencoder(input_sample)
+    autoencoder_model = Model(inputs=[input_sample, target_sample], outputs=recon_sample)
+
+    # loss
+    mse_loss = float(input_shape[0]) * float(input_shape[1]) * metrics.mse(target_sample, recon_sample)
+    autoencoder_model.add_loss(K.mean(mse_loss))
+
+    return autoencoder_model
+    # return autoencoder
+
+
+def sampling(args):
+    z_mean, z_log_var = args
+    epsilon = K.random_normal(shape=K.shape(z_mean), mean=0., stddev=1.0)
+    return z_mean + K.exp(z_log_var / 2) * epsilon
 
 
 def ConvVAE(num_filters, kernel_sizes, num_z, input_shape=kDefaultInputShape):
@@ -107,41 +85,67 @@ def ConvVAE(num_filters, kernel_sizes, num_z, input_shape=kDefaultInputShape):
 
     num_layers = len(num_filters)
 
+    # encoder
+    encoder_settings = [(num_filters[i], kernel_sizes[i]) for i in range(1, num_layers)]
+
     encoder = Sequential()
     encoder.add(Conv2D(num_filters[0], (kernel_sizes[0], input_shape[1]), input_shape=input_shape))
     encoder.add(BatchNormalization())
     encoder.add(Activation('relu'))
-
-    # for convolutional layers
-    conv_layer_params = [(num_filters[i], kernel_sizes[i]) for i in range(1, num_layers)]
-    conv_layer_params.append((num_z, last_kernel_size))
-
-    for (num_filter, kernel_size) in conv_layer_params:
-        encoder.add(Conv2D(num_filter, (kernel_size, 1)))
+    for (num_fs, sz_k) in encoder_settings:
+        encoder.add(Conv2D(num_fs, (sz_k, 1)))
         encoder.add(BatchNormalization())
         encoder.add(Activation('relu'))
 
-    #TODO: complete below
+    # output layer of encoder
+    encoder.add(Conv2D(num_z, (last_kernel_size, 1)))
+    encoder.add(BatchNormalization())
+    encoder.add(Activation('linear', name='latent'))
+
+    encoder.summary()
+
+    # latent space
+    input_sample = Input(shape=input_shape)
+    z_mean = encoder(input_sample)
+    z_log_var = encoder(input_sample)
+    latent = Lambda(sampling)([z_mean, z_log_var])
 
     # for deconvolutional layers
-    num_filters = num_filters[::-1]
-    num_filters.append(input_shape[2])
-    kernel_sizes.append(last_kernel_size)
-    kernel_sizes = kernel_sizes[::-1]
-    _deconv_settings = [(num_filters[i], kernel_sizes[i]) for i in range(len(num_filters))]
-    _input_width = 1
-    for i, (num_filter, kernel_size) in enumerate(_deconv_settings):
-        if i + 1 == len(_deconv_settings):
-            _input_width = input_shape[1]
-        encoder.add(Conv2DTranspose(num_filter, (kernel_size, _input_width)))
-        encoder.add(BatchNormalization())
-        if i + 1 == len(_deconv_settings):
-            # encoder.add(Activation('tanh'))
-            pass
-        else:
-            encoder.add(Activation('relu'))
+    dec_num_filters = num_filters[::-1] + [input_shape[2]]
+    dec_kernel_sizes = [last_kernel_size] + kernel_sizes[::-1]
+    dec_channels = [1 if i < num_layers else input_shape[1] for i in range(num_layers + 1)]
+    decoder_settings = [(dec_num_filters[i], dec_kernel_sizes[i], dec_channels[i]) for i in range(len(dec_num_filters))]
 
-    return encoder
+    # decoder
+    decoder = Sequential()
+    for i, (num_fs, sz_k, ch) in enumerate(decoder_settings):
+        if i == 0:
+            decoder.add(Conv2DTranspose(num_fs, (sz_k, ch), input_shape=(1, 1, num_z)))
+        else:
+            decoder.add(Conv2DTranspose(num_fs, (sz_k, ch)))
+        if i + 1 == num_layers:
+            decoder.add(Activation('linear'))
+        else:
+            decoder.add(Activation('relu'))
+
+    # reconstruction
+    recon_sample = decoder(latent)
+    target_sample = Input(shape=input_shape)
+
+    decoder.summary()
+
+    # instantiate VAE model
+    vae = Model(inputs=[input_sample, target_sample], outputs=recon_sample)
+    vae.summary()
+
+    # Compute VAE loss
+    mse_loss = float(input_shape[0]) * float(input_shape[1]) * metrics.mse(target_sample, recon_sample)
+    kl_loss = - 0.5 * K.sum(1 + z_log_var - K.square(z_mean) - K.exp(z_log_var), axis=-1)
+    vae_loss = K.mean(mse_loss + kl_loss)
+
+    vae.add_loss(vae_loss)
+
+    return vae
 
 # ()()
 # ('')HAANJU.YOO

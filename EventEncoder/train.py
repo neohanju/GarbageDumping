@@ -4,7 +4,7 @@ import os
 
 from keras import callbacks
 
-from models import ConvAE
+from models import ConvAE, ConvVAE
 from utils import load_samples, get_time_string
 
 
@@ -83,15 +83,19 @@ def train_network(opts):
     action_info, action_data, target_data = load_samples(opts.data_path, options.dirty_sample_path)
 
     # construct model
-    # TODO: construct model depends on option argument
-    model = ConvAE(opts.nfs, opts.sks, opts.nz, opts.input_size)
-    model.summary()
+    if 'AE' == opts.model:
+        model = ConvAE(opts.nfs, opts.sks, opts.nz, opts.input_size)
+    elif 'VAE' == opts.model:
+        model = ConvVAE(opts.nfs, opts.sks, opts.nz, opts.input_size)
+    else:
+        print('There is no proper model for option: ' + opts.model)
+        return
 
     # generate callback lists
     callback_list = [tbCallBack, BestLossCallBack(model, opts.save_path, opts.save_period)]
 
-    model.compile(optimizer='rmsprop', loss='mse')
-    model.fit(action_data, target_data, epochs=opts.epochs, batch_size=opts.batch_size, callbacks=callback_list, shuffle=True)
+    model.compile(optimizer='rmsprop')
+    model.fit([action_data, target_data], epochs=opts.epochs, batch_size=opts.batch_size, callbacks=callback_list, shuffle=True)
 
 
 if __name__ == "__main__":
