@@ -8,6 +8,8 @@ BASEDIR=$(pwd)
 TIMESTAMP=$(date '+%Y-%m-%d_%H-%M-%S')
 RESULT_PATH="training_results/$TIMESTAMP"
 
+mkdir $RESULT_PATH
+
 echo ""
 echo " ===< TRAINING >==========================================================="
 echo ""
@@ -51,8 +53,7 @@ TRAIN_OPTS="--model $model --data_path $data_path --save_path $RESULT_PATH --tb_
             --epochs $epochs --nfs $num_filters --sks $kernel_sizes --nz $num_z --batch_size $batch_size \
             $denoising $dropout $latent_reg"
 
-#python train.py $TRAIN_OPTS |& tee $(pwd)/$RESULT_PATH/training.log
-python train.py $TRAIN_OPTS
+python train.py $TRAIN_OPTS |& tee $RESULT_PATH/training.log
 
 
 echo ""
