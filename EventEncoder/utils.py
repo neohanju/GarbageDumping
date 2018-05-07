@@ -4,6 +4,7 @@ import os
 import re
 import glob
 import copy
+import csv
 from time import localtime, strftime
 
 
@@ -154,12 +155,20 @@ def save_latent_variables(save_path, latent_data, file_infos):
         np.save(full_file_path, latent_data[i].flatten())
 
 def save_recon_error(save_path, input, prediction, file_infos):
-    make_dir(save_path)
+    full_file_path = os.path.join(save_path, 'recon_error.csv')
     print('Save reconstruction errors...')
+
+    recon_error_list = []
     for i in progressbar.progressbar((range(len(file_infos)))):
-        full_file_path = os.path.join(save_path, file_infos[i]['file_name'] + "-recon_error.txt")
         recon_errors = np.sum((input[i] - prediction[i]) ** 2) ** 0.5
-        np.savetxt(full_file_path, recon_errors.reshape(1,))
+        # print(file_infos[i])
+        file_name = file_infos[i]['file_name']
+        label = re.split('[-.]+', file_name)[-1]
+        recon_error_list.append([file_name, label, float(recon_errors)])
+
+    with open(full_file_path, "w") as f:
+        writer = csv.writer(f)
+        writer.writerows(recon_error_list)
 
 def get_time_string():
     strftime("%y%m%d-%H%M%S", localtime())

@@ -58,7 +58,7 @@ def ConvAE(num_filters, kernel_sizes, num_z, input_shape=kDefaultInputShape, dro
         else:
             decoder.add(Conv2DTranspose(num_fs, (sz_k, ch)))
         decoder.add(BatchNormalization())
-        if i + 1 == num_layers:
+        if i + 1 == len(decoder_settings):
             decoder.add(Activation('linear'))
         else:
             decoder.add(Activation('relu'))

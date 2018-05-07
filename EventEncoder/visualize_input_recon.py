@@ -11,8 +11,7 @@ kImageSize = 600
 
 kLimbs = [[1, 2], [1, 5], [2, 3], [3, 4], [5, 6],
          [6, 7], [1, 8], [8, 9], [9, 10], [1, 11],
-         [11, 12], [12, 13], [1, 0], [0, 14], [14, 16],
-         [0, 15], [15, 17]]
+         [11, 12], [12, 13], [1, 0]]
 
 parser = argparse.ArgumentParser(description='Visualizing input and reconstruction via video')
 # model related ---------------------------------------------------------------

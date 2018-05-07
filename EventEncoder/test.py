@@ -24,7 +24,7 @@ if __name__ == "__main__":
     save_samples(os.path.join(options.save_path, 'recons'), predictions, test_info)
 
     #print(test_data.shape)
-    save_recon_error(os.path.join(options.save_path, 'recon_errors'), test_data, predictions, test_info)
+    save_recon_error(options.save_path, test_data, predictions, test_info)
 
     if options.save_latent:
         encoder = Model(inputs=model.get_layer('sequential_1').model.input,
