@@ -8,7 +8,7 @@ from keras import metrics
 kDefaultInputShape = (30, 28, 1)
 
 
-def ConvAE(num_filters, kernel_sizes, num_z, input_shape=kDefaultInputShape, dropout=False, latent_reg=False):
+def ConvAE(num_filters, kernel_sizes, num_z, input_shape=kDefaultInputShape, dropout=False):
 
     assert (len(num_filters) == len(kernel_sizes))
 
@@ -38,10 +38,7 @@ def ConvAE(num_filters, kernel_sizes, num_z, input_shape=kDefaultInputShape, dro
     # output layer of encoder
     encoder.add(Conv2D(num_z, (last_kernel_size, 1)))
     encoder.add(BatchNormalization())
-    if latent_reg:
-        encoder.add(Activation('linear', name='latent', regularizers=regularizers.l1(0.01)))
-    else:
-        encoder.add(Activation('linear', name='latent'))
+    encoder.add(Activation('linear', name='latent'))
     if dropout:
         encoder.add(Dropout(0.3))
 

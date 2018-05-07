@@ -43,15 +43,10 @@ if [ $dropout = true ]; then
 else
 	dropout=""
 fi
-if [ $latent_reg = true ]; then
-	latent_reg="--latent_reg"
-else
-	latent_reg=""
-fi
 
 TRAIN_OPTS="--model $model --data_path $data_path --save_path $RESULT_PATH --tb_path $RESULT_PATH \
             --epochs $epochs --nfs $num_filters --sks $kernel_sizes --nz $num_z --batch_size $batch_size \
-            $denoising $dropout $latent_reg"
+            $denoising $dropout"
 
 python train.py $TRAIN_OPTS |& tee $RESULT_PATH/training.log
 
