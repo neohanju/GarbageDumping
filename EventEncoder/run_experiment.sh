@@ -28,7 +28,7 @@ num_z="256"
 # num_z = 128
 
 batch_size="512"
-epochs="1000"
+epochs="2000"
 denoising=true
 dropout=true
 latent_reg=true
@@ -43,7 +43,7 @@ if [ $dropout = true ]; then
 else
 	dropout=""
 fi
-if [ $activation_reg = true ]; then
+if [ $latent_reg = true ]; then
 	latent_reg="--latent_reg"
 else
 	latent_reg=""
