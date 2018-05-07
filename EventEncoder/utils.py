@@ -104,6 +104,24 @@ def load_samples(data_path, dirty_sample_path=None, num_data=None):
     # return action_info, np.expand_dims(action_data, axis=3), np.expand_dims(target_data, axis=3)
 
 
+def load_latent_vectors(data_path, num_data=None):
+
+    latent_info, latent_data = [], []
+    file_paths = glob.glob(os.path.join(data_path, '*.npy'))
+    file_paths.sort()
+
+    print('Load latent vectors...')
+    num_files = len(file_paths) if num_data is None else num_data
+    for i in progressbar.progressbar(range(num_files)):
+        # sample information
+        latent_info.append(parsing_action_file_name(file_paths[i]))
+
+        # sample data
+        latent_data.append(np.reshape(load_sample(file_paths[i]), (1, 1, -1)))
+
+    return latent_info, np.stack(latent_data)
+
+
 def combine_input_and_target(input_file_names, target_file_names):
     input_file_names.sort()
     target_file_names.sort()
