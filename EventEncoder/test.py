@@ -23,9 +23,8 @@ if __name__ == "__main__":
     predictions = model.predict(test_data)
     save_samples(os.path.join(options.save_path, 'recons'), predictions, test_info)
 
-    loss_and_metrics = model.evaluate(test_data, predictions)
-    print(loss_and_metrics)
-    save_recon_error(os.path.join((options.save_path, 'recon_errors')), loss_and_metrics, test_info)
+    #print(test_data.shape)
+    save_recon_error(os.path.join(options.save_path, 'recon_errors'), test_data, predictions, test_info)
 
     if options.save_latent:
         encoder = Model(inputs=model.get_layer('sequential_1').model.input,

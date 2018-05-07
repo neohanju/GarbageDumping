@@ -153,12 +153,13 @@ def save_latent_variables(save_path, latent_data, file_infos):
         full_file_path = os.path.join(save_path, file_infos[i]['file_name'] + "-latent.npy")
         np.save(full_file_path, latent_data[i].flatten())
 
-def save_recon_error(save_path, recon_errors, file_infos):
+def save_recon_error(save_path, input, prediction, file_infos):
     make_dir(save_path)
     print('Save reconstruction errors...')
     for i in progressbar.progressbar((range(len(file_infos)))):
-        full_file_path = os.path.join(save_path, file_infos[i]['file_name'] + "-recon_error.npy")
-        np.save(full_file_path, recon_errors[i])
+        full_file_path = os.path.join(save_path, file_infos[i]['file_name'] + "-recon_error.txt")
+        recon_errors = np.sum((input[i] - prediction[i]) ** 2) ** 0.5
+        np.savetxt(full_file_path, recon_errors.reshape(1,))
 
 def get_time_string():
     strftime("%y%m%d-%H%M%S", localtime())
