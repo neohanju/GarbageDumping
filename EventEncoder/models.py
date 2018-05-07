@@ -1,5 +1,5 @@
 from keras.models import Sequential, Model
-from keras.layers import Dense, Activation, Conv2D,  Conv2DTranspose, Input, Lambda
+from keras.layers import Dense, Activation, Conv2D,  Conv2DTranspose, Input, Lambda, Dropout
 from keras.layers.normalization import BatchNormalization
 import keras.backend as K
 from keras import regularizers
@@ -8,7 +8,7 @@ from keras import metrics
 kDefaultInputShape = (30, 28, 1)
 
 
-def ConvAE(num_filters, kernel_sizes, num_z, input_shape=kDefaultInputShape):
+def ConvAE(num_filters, kernel_sizes, num_z, input_shape=kDefaultInputShape, dropout=False, latent_reg=False):
 
     assert (len(num_filters) == len(kernel_sizes))
 
@@ -19,23 +19,33 @@ def ConvAE(num_filters, kernel_sizes, num_z, input_shape=kDefaultInputShape):
 
     num_layers = len(num_filters)
 
-    # autoencoder
+    # encoder
     encoder_settings = [(num_filters[i], kernel_sizes[i]) for i in range(1, num_layers)]
 
-    autoencoder = Sequential()
-    autoencoder.add(Conv2D(num_filters[0], (kernel_sizes[0], input_shape[1]), input_shape=input_shape))
+    encoder = Sequential()
+    encoder.add(Conv2D(num_filters[0], (kernel_sizes[0], input_shape[1]), input_shape=input_shape))
                       # kernel_regularizer=regularizers.l2(0.01),
                       # activity_regularizer=regularizers.l1(0.01)))
-    autoencoder.add(BatchNormalization())
-    autoencoder.add(Activation('relu'))
+    encoder.add(BatchNormalization())
+    encoder.add(Activation('relu'))
     for (num_fs, sz_k) in encoder_settings:
-        autoencoder.add(Conv2D(num_fs, (sz_k, 1)))
-        autoencoder.add(BatchNormalization())
-        autoencoder.add(Activation('relu'))
-    # output layer of autoencoder
-    autoencoder.add(Conv2D(num_z, (last_kernel_size, 1)))
-    autoencoder.add(BatchNormalization())
-    autoencoder.add(Activation('linear', name='latent'))
+        encoder.add(Conv2D(num_fs, (sz_k, 1)))
+        encoder.add(BatchNormalization())
+        encoder.add(Activation('relu'))
+        if dropout:
+            encoder.add(Dropout(0.3))
+
+    # output layer of encoder
+    encoder.add(Conv2D(num_z, (last_kernel_size, 1)))
+    encoder.add(BatchNormalization())
+    if latent_reg:
+        encoder.add(Activation('linear', name='latent', regularizers=regularizers.l1(0.01)))
+    else:
+        encoder.add(Activation('linear', name='latent'))
+    if dropout:
+        encoder.add(Dropout(0.3))
+
+    # encoder.summary()
 
     # for deconvolutional layers
     dec_num_filters = num_filters[::-1] + [input_shape[2]]
@@ -43,29 +53,32 @@ def ConvAE(num_filters, kernel_sizes, num_z, input_shape=kDefaultInputShape):
     dec_channels = [1 if i < num_layers else input_shape[1] for i in range(num_layers + 1)]
     decoder_settings = [(dec_num_filters[i], dec_kernel_sizes[i], dec_channels[i]) for i in range(len(dec_num_filters))]
 
+    decoder = Sequential()
     # decoder
     for i, (num_fs, sz_k, ch) in enumerate(decoder_settings):
-        autoencoder.add(Conv2DTranspose(num_fs, (sz_k, ch)))
-        autoencoder.add(BatchNormalization())
-        if i + 1 == num_layers:
-            autoencoder.add(Activation('linear'))
+        if 0 == i:
+            decoder.add(Conv2DTranspose(num_fs, (sz_k, ch), input_shape=(1, 1, num_z)))
         else:
-            autoencoder.add(Activation('relu'))
+            decoder.add(Conv2DTranspose(num_fs, (sz_k, ch)))
+        decoder.add(BatchNormalization())
+        if i + 1 == num_layers:
+            decoder.add(Activation('linear'))
+        else:
+            decoder.add(Activation('relu'))
+            if dropout:
+                decoder.add(Dropout(0.3))
 
+    # decoder.summary()
+
+    # for denoising encoder
+    x = Input(shape=input_shape)
+    z = encoder(x)
+    x_hat = decoder(z)
+
+    autoencoder = Model(inputs=x, outputs=x_hat)
     autoencoder.summary()
 
-    # # for denoising autoencoder
-    # input_sample = Input(shape=input_shape)
-    # target_sample = Input(shape=input_shape)
-    # recon_sample = autoencoder(input_sample)
-    # autoencoder_model = Model(inputs=[input_sample, target_sample], outputs=[recon_sample, autoencoder.get_layer('latent').output])
-    #
-    # # loss
-    # mse_loss = float(input_shape[0]) * float(input_shape[1]) * metrics.mse(target_sample, recon_sample)
-    # autoencoder_model.add_loss(K.mean(mse_loss))
-    #
-    # return autoencoder_model
-    return autoencoder
+    return autoencoder, encoder, decoder
 
 
 def vanila_autoencoder_loss(model_inputs, model_outputs):
