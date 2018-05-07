@@ -19,6 +19,8 @@ parser.add_argument('--sks', type=int, default=[1], nargs='+', help='list of siz
 parser.add_argument('--nz', type=int, default=128, help='size of the latent z vector. default=128.')
 parser.add_argument('--input_size', type=int, default=[30, 28, 1], nargs='+', help='input shape. default=[30, 36, 1].')
 parser.add_argument('--denoising', action='store_true', default=False, help="training with denoising. need 'dirty_sample' folder ins 'data_path'")
+parser.add_argument('--dropout', action='store_true', default=False, help="do dropout'")
+parser.add_argument('--latent_reg', action='store_true', default=False, help="do latent space regulization")
 # path related ---------------------------------------------------------------
 parser.add_argument('--data_path', type=str, default='/home/jm/etri_action_data/30_10', help='base path of dataset.')
 parser.add_argument('--save_path', type=str, default='training_results', help='model save path.')
@@ -44,6 +46,16 @@ if options.denoising:
     options.dirty_sample_path = os.path.join(options.data_path, 'dirty_sample')
 else:
     options.dirty_sample_path = None
+
+if options.dropout:
+    options.dropout = True
+else:
+    options.dropout = False
+
+if options.latent_reg:
+    options.latent_reg = True
+else:
+    options.latent_reg = False
 
 
 # =============================================================================
@@ -85,7 +97,7 @@ def train_network(opts):
 
     # construct model
     if 'AE' == opts.model:
-        model, encoder, decoder = ConvAE(opts.nfs, opts.sks, opts.nz, opts.input_size)
+        model, encoder, decoder = ConvAE(opts.nfs, opts.sks, opts.nz, opts.input_size, opts.dropout, opts.latent_reg)
 
     # elif 'VAE' == opts.model:
     #     model = ConvVAE(opts.nfs, opts.sks, opts.nz, opts.input_size)

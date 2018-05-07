@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # paths
-data_path="/home/mlpa/Workspace/dataset/etri_action_data/30_10/etri"
+data_path="/home/mlpa/Workspace/dataset/etri_action_data/30_10/posetrack"
 
 
 BASEDIR=$(pwd)
@@ -26,17 +26,30 @@ num_z="256"
 # num_z = 128
 
 batch_size="512"
-epochs="20000"
+epochs="1000"
 denoising=true
+dropout=true
+latent_reg=true
 
 if [ $denoising = true ]; then
 	denoising="--denoising"
 else
 	denoising=""
 fi
+if [ $dropout = true ]; then
+	dropout="--dropout"
+else
+	dropout=""
+fi
+if [ $activation_reg = true ]; then
+	latent_reg="--latent_reg"
+else
+	latent_reg=""
+fi
 
 TRAIN_OPTS="--model $model --data_path $data_path --save_path $RESULT_PATH --tb_path $RESULT_PATH \
-            --epochs $epochs --nfs $num_filters --sks $kernel_sizes --nz $num_z $denoising --batch_size $batch_size"
+            --epochs $epochs --nfs $num_filters --sks $kernel_sizes --nz $num_z --batch_size $batch_size \
+            $denoising $dropout $latent_reg"
 
 #python train.py $TRAIN_OPTS |& tee $(pwd)/$RESULT_PATH/training.log
 python train.py $TRAIN_OPTS
