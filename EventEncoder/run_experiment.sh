@@ -8,6 +8,8 @@ BASEDIR=$(pwd)
 TIMESTAMP=$(date '+%Y-%m-%d_%H-%M-%S')
 RESULT_PATH="training_results/$TIMESTAMP"
 
+mkdir $RESULT_PATH
+
 echo ""
 echo " ===< TRAINING >==========================================================="
 echo ""
@@ -26,7 +28,7 @@ num_z="256"
 # num_z = 128
 
 batch_size="512"
-epochs="1000"
+epochs="2000"
 denoising=true
 dropout=true
 latent_reg=true
@@ -41,18 +43,12 @@ if [ $dropout = true ]; then
 else
 	dropout=""
 fi
-if [ $activation_reg = true ]; then
-	latent_reg="--latent_reg"
-else
-	latent_reg=""
-fi
 
 TRAIN_OPTS="--model $model --data_path $data_path --save_path $RESULT_PATH --tb_path $RESULT_PATH \
             --epochs $epochs --nfs $num_filters --sks $kernel_sizes --nz $num_z --batch_size $batch_size \
-            $denoising $dropout $latent_reg"
+            $denoising $dropout"
 
-#python train.py $TRAIN_OPTS |& tee $(pwd)/$RESULT_PATH/training.log
-python train.py $TRAIN_OPTS
+python train.py $TRAIN_OPTS |& tee $RESULT_PATH/training.log
 
 
 echo ""
