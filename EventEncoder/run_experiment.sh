@@ -1,16 +1,20 @@
 #!/usr/bin/env bash
 
 # paths
-data_path="/home/neohanju/Workspace/dataset/etri_action_data/30_10"
+data_path="/home/mlpa/Workspace/dataset/etri_action_data/30_10/etri"
+
 
 BASEDIR=$(pwd)
 TIMESTAMP=$(date '+%Y-%m-%d_%H-%M-%S')
 RESULT_PATH="training_results/$TIMESTAMP"
 
-
+echo ""
 echo " ===< TRAINING >==========================================================="
+echo ""
 
 # other options
+model="AE"
+
 num_filters="512 256 128"
 kernel_sizes="8 8 8"
 #  output:   23,16,9
@@ -21,22 +25,35 @@ num_z="256"
 # #  output:  26,22,18,14,10,6
 # num_z = 128
 
-epochs="2000"
+batch_size="512"
+epochs="20000"
+denoising=true
 
-TRAIN_OPTS="--data_path $data_path --save_path $RESULT_PATH --tb_path $RESULT_PATH \
-            --epochs $epochs --nfs $num_filters --sks $kernel_sizes --nz $num_z"
+if [ $denoising = true ]; then
+	denoising="--denoising"
+else
+	denoising=""
+fi
 
+TRAIN_OPTS="--model $model --data_path $data_path --save_path $RESULT_PATH --tb_path $RESULT_PATH \
+            --epochs $epochs --nfs $num_filters --sks $kernel_sizes --nz $num_z $denoising --batch_size $batch_size"
+
+#python train.py $TRAIN_OPTS |& tee $(pwd)/$RESULT_PATH/training.log
 python train.py $TRAIN_OPTS
 
 
+echo ""
 echo " ===< TESTING >============================================================"
+echo ""
 
 TEST_OPTS="--data_path $data_path --model_path $RESULT_PATH/best_loss.hdf5 --save_path $RESULT_PATH --save_latent"
 
 python test.py $TEST_OPTS
 
 
+echo ""
 echo " ===< VISUALIZATION >======================================================"
+echo ""
 
 random_sampling="30"
 

@@ -3,6 +3,7 @@ import progressbar
 import os
 import re
 import glob
+import copy
 from time import localtime, strftime
 
 
@@ -16,29 +17,109 @@ def make_dir(path):
     return
 
 
-# loading data samples and parsing their parameters from their file name
-def load_samples(data_path, num_data=None):
+def parsing_action_file_name(file_name):
+    # 000003_bonn-00-2121-030-10-738_516-336_083-131_216-0.npy
+    # [VIDEO NAME]-[ID]-[FRAME #]-[SAMPLE LENGTH]-[SAMPLE INTERVAL]-[NECK X]_[NECK X]-[NECK Y]_[NECK Y]-[TORSO]_[TORSO]-[THROWING LABEL].npy
 
-    action_data, action_info, action_file_name = [], [], []
+    file_name_part = os.path.basename(file_name).split('.')[0]  # ensure that 'file_name' does not have directory part
+    file_info_strings = re.split('[-.]+', file_name_part)
+    original_file_name = '-'.join(file_info_strings[0:9])  # only differ from 'file_name_part' when the sample is a noisy sample
+    file_info_dict = {
+        'file_name': file_name_part,
+        'original_name': original_file_name,
+        'video_name': file_info_strings[0],
+        'track_id': int(file_info_strings[1]),
+        'frame_number': int(file_info_strings[2]),
+        'sample_length': int(file_info_strings[3]),
+        'sample_interval': int(file_info_strings[4]),
+        'neck_point': [float(file_info_strings[5].replace('_', '.')), float(file_info_strings[6].replace('_', '.'))],
+        'chest_length': float(file_info_strings[7].replace('_', '.')),
+        'label': int(file_info_strings[8]),
+        'dirty_label': None if len(file_info_strings) <= 9 else file_info_strings[9]
+    }
+    return file_info_dict
+
+
+def load_sample(sample_path):
+    sample = np.load(sample_path)
+    if sample.ndim < 3:
+        sample = np.expand_dims(sample, axis=3)
+    return sample
+
+
+# loading data samples and parsing their parameters from their file name
+def load_samples(data_path, dirty_sample_path=None, num_data=None):
+    # return Xs, infos, targets (when dirty samples are ready)
+
+    action_info, action_data = [], []
     file_paths = glob.glob(os.path.join(data_path, '*.npy'))
     file_paths.sort()
 
     print('Load data...')
     num_files = len(file_paths) if num_data is None else num_data
     for i in progressbar.progressbar(range(num_files)):
-        # sample data
-        action_data.append(np.load(file_paths[i]))
-
-        # file names
-        file_name = os.path.basename(file_paths[i]).split('.')[0]
-        action_file_name.append(file_name)
-
         # sample information
-        file_infos = re.split('[-.]+', file_name)
-        file_infos = file_infos[0:-1]
-        action_info.append(file_infos)
+        action_info.append(parsing_action_file_name(file_paths[i]))
 
-    return np.expand_dims(action_data, axis=3), action_info, action_file_name
+        # sample data
+        action_data.append(load_sample(file_paths[i]))
+
+    if dirty_sample_path is not None and num_data is None:
+        assert(os.path.exists(os.path.join(data_path, dirty_sample_path)))
+        dirty_file_paths = glob.glob(os.path.join(data_path, dirty_sample_path, '*.npy'))
+        dirty_file_paths.sort()
+        print('Load noisy data...')
+
+        target_info = copy.deepcopy(action_info)
+        target_data = [single_data for single_data in action_data]
+        target_idx = 0
+        for i in progressbar.progressbar(range(len(dirty_file_paths))):
+            # sample information
+            cur_info = parsing_action_file_name(dirty_file_paths[i])
+
+            search_length = 0
+            while target_info[target_idx]['file_name'] not in cur_info['file_name']:
+                target_idx += 1
+                search_length += 1
+                if len(target_info) <= target_idx:
+                    target_idx = 0
+                if len(target_info) <= search_length:
+                    print("There is no original data for " + cur_info['file_name'])
+                    assert False
+
+            # sample info
+            action_info.append(cur_info)
+
+            # sample data
+            action_data.append(load_sample(dirty_file_paths[i]))
+
+            # target data
+            target_data.append(action_data[target_idx])
+    else:
+        # for reconstruction
+        target_data = action_data
+
+    return action_info, np.stack(action_data, axis=0), np.stack(target_data, axis=0)
+
+    # return action_info, np.expand_dims(action_data, axis=3), np.expand_dims(target_data, axis=3)
+
+
+def load_latent_vectors(data_path, num_data=None):
+
+    latent_info, latent_data = [], []
+    file_paths = glob.glob(os.path.join(data_path, '*.npy'))
+    file_paths.sort()
+
+    print('Load latent vectors...')
+    num_files = len(file_paths) if num_data is None else num_data
+    for i in progressbar.progressbar(range(num_files)):
+        # sample information
+        latent_info.append(parsing_action_file_name(file_paths[i]))
+
+        # sample data
+        latent_data.append(np.reshape(load_sample(file_paths[i]), (1, 1, -1)))
+
+    return latent_info, np.stack(latent_data)
 
 
 def combine_input_and_target(input_file_names, target_file_names):
@@ -57,19 +138,19 @@ def combine_input_and_target(input_file_names, target_file_names):
     return input_target_index_pairs
 
 
-def save_samples(save_path, result_data, file_names, postfix='-recon'):
+def save_samples(save_path, result_data, file_infos, postfix='-recon'):
     make_dir(save_path)
     print('Save network outputs...')
-    for i in progressbar.progressbar(range(len(file_names))):
-        full_file_path = os.path.join(save_path, file_names[i] + postfix + ".npy")
+    for i in progressbar.progressbar(range(len(file_infos))):
+        full_file_path = os.path.join(save_path, file_infos[i]['file_name'] + postfix + ".npy")
         np.save(full_file_path, np.squeeze(result_data[i], axis=2))
 
 
-def save_latent_variables(save_path, latent_data, file_names):
+def save_latent_variables(save_path, latent_data, file_infos):
     make_dir(save_path)
     print('Save network outputs...')
-    for i in progressbar.progressbar(range(len(file_names))):
-        full_file_path = os.path.join(save_path, file_names[i] + "-latent.npy")
+    for i in progressbar.progressbar(range(len(file_infos))):
+        full_file_path = os.path.join(save_path, file_infos[i]['file_name'] + "-latent.npy")
         np.save(full_file_path, latent_data[i].flatten())
 
 
