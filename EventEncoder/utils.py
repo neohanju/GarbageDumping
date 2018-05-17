@@ -123,6 +123,23 @@ def load_latent_vectors(data_path, num_data=None):
     return latent_info, np.stack(latent_data)
 
 
+def load_recon_error(data_path):
+
+    recon_error_list = []
+
+    print('Load reconstruction errors...')
+    with open(data_path, 'r') as f:
+        lines = f.readlines()
+
+        for i in progressbar.progressbar(range(len(lines))):
+            split_line = lines[i].split(',')
+            file_name = split_line[0]
+            label = split_line[1]
+            recon_error = split_line[2]
+            recon_error_list.append([file_name, label, recon_error])
+
+    return np.array(recon_error_list)
+
 def combine_input_and_target(input_file_names, target_file_names):
     input_file_names.sort()
     target_file_names.sort()
@@ -154,8 +171,8 @@ def save_latent_variables(save_path, latent_data, file_infos):
         full_file_path = os.path.join(save_path, file_infos[i]['file_name'] + "-latent.npy")
         np.save(full_file_path, latent_data[i].flatten())
 
-def save_recon_error(save_path, input, prediction, file_infos):
-    full_file_path = os.path.join(save_path, 'recon_error.csv')
+def save_recon_error(save_path, input, prediction, file_infos, file_name='recon_error.csv'):
+    full_file_path = os.path.join(save_path, file_name)
     print('Save reconstruction errors...')
 
     recon_error_list = []
@@ -185,7 +202,33 @@ def intersection_over_union(box1, box2):
     area2 = (box2[2] - box2[0]) * (box2[3] - box2[1])
     return inter_area / (area1 + area2 - inter_area)
 
+def calc_metric(gt_list, detect_list):
 
+    tmp_list = np.array(gt_list) + 2* np.array(detect_list)
+
+    result = {'tp' : 0,
+              'fn' : 0,
+              'fp' : 0,
+              'tn' : 0}
+    tp = tn = fp = fn = 0
+    for res in tmp_list:
+
+        if res == 0:
+            result['tn'] += 1
+
+        elif res == 1:
+            result['fn'] += 1
+
+        elif res == 2:
+            result['fp'] += 1
+
+        else:
+            result['tp'] += 1
+
+    #precision = tp / tp + fp
+    #recall = tp / tp + fn
+
+    return result
 
 # ()()
 # ('') HAANJU.YOO
