@@ -47,7 +47,7 @@ class MakeAction():
 
         return data
 
-    def make_action_data(self, _file_name, pose_data):
+    def make_action_data(self, _file_name, pose_data, n_channel=3):
         action_data = []
         sample_info = []
         for person_id in pose_data.keys():
@@ -89,6 +89,8 @@ class MakeAction():
 
                 label_check = 0
                 # action_data.append([])
+                #if n_channel == 3:
+                x_channel = y_channel = c_channel = []
                 action = []
                 for i in frame_key[start:end]:
 
@@ -100,15 +102,32 @@ class MakeAction():
                     tmp_list = self.normalize_pose(tmp_list, first_frame_neck, first_frame_dist)
                     # print("next:", tmp_list)
 
-                    action.append([])
-                    for j in range(kNumKeypointTypes):
-                        # action_data[-1].append(tmp_list[j])
-                        action[-1].append(tmp_list[3 * j + 0])
-                        action[-1].append(tmp_list[3 * j + 1])
-                    
+                    if n_channel == 3:
+                        for j in range(kNumKeypointTypes):
+                            x_channel.append(tmp_list[3 * j + 0])
+                            y_channel.append(tmp_list[3 * j + 1])
+                            c_channel.append(tmp_list[3 * j + 2])
+
+                    else:
+                        action.append([])
+                        for j in range(kNumKeypointTypes):
+                            # action_data[-1].append(tmp_list[j])
+                            action[-1].append(tmp_list[3 * j + 0])
+                            action[-1].append(tmp_list[3 * j + 1])
+
+                if n_channel == 3:
+                    x_channel = np.array(x_channel).reshape(params['interval'], kNumKeypointTypes)
+                    y_channel = np.array(y_channel).reshape(params['interval'], kNumKeypointTypes)
+                    c_channel = np.array(c_channel).reshape(params['interval'], kNumKeypointTypes)
+                    action = np.dstack((x_channel, y_channel, c_channel))
                     # action frame동안 투기로 labeled 된 pose가 몇갠지 세는 것
                     if cur_person[i][-1] == 1:
                         label_check += 1
+
+                else:
+                    action = np.asarray(action)
+                    # print("shape", action.shape)
+                    # print(action)
 
                 class_label = None
                 # labeled 된것이 threshold 값보다 높다면 action을 투기action으로 labeling
@@ -131,9 +150,6 @@ class MakeAction():
                                  % (_file_name, person_id, frame_key[start], params['interval'], params['step'],
                                     str_neck_x, str_neck_y, str_dist, class_label)
 
-                action = np.asarray(action)
-                # print("shape", action.shape)
-                # print(action)
                 self.save_action_npy(action, save_file_name)
 
                 start += params['step']
